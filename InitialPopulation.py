@@ -2,38 +2,29 @@ import treelib
 import pandas as pd
 import pm4py
 import random
-import re
-from itertools import permutations
+import basic_tree
+import logging
+from pm4py.simulation.tree_generator.variants.ptandloggenerator import GeneratedTree
 
-event_list = ("a", "bb", "cc", "dd", "ee", "ff", "gg", "hh")
-operator_map = {
-    "parallel execution": {"value": u"\u02C4", "nodes": 2},
-    "non-exclusive choice": {"value": u"\u02C5", "nodes": 2},
-    "exclusive choice": {"value": "x", "nodes": 2},
-    "sequential execution": {"value": u"\u2192", "nodes": len(event_list)},
-    "repeated execution": {"value": u"\u21BA", "nodes": 3},
-}
-# class ImportData:
-#
-#     def __init__(self, path):
-#         self.event_log = pm4py.read_xes(path)
-#         # self.input_data = pd.read_csv(path)
-#
-#
-# log = ImportData("Artificial - Small Process.xes")
-# print(log.event_log[0][0])
-# case = import_data.input_data.loc[import_data.input_data["Case ID"] == 1]
-# print(case["Activity"])
-# case = import_data.input_data.loc[import_data.input_data["Case ID"] == 2]
-# print(case["Activity"])
-# case = import_data.input_data.loc[import_data.input_data["Case ID"] == 3]
-# print(case["Activity"])
-# print(import_data.input_data["Case ID"] == 1)
+random.seed(7)
 
-# pm4py supports access and manipulation of event log data through the IEEE XES- and csv format.
+class InitialPopulation:
 
-# print(operator_map)
-random.seed(6)
+    def __init__(self, unique_events, population_size):
+        self.logger = logging.getLogger(__name__)
+        self.unique_events = list(unique_events)
+        self.population_size = population_size
+        self.trees = []
+        GeneratedTree.alphabet = list(unique_events)
+
+    def create_initial_population(self):
+        # parameters = {"events": self.unique_events}
+        parameters = {"min": len(self.unique_events), "max": 2*len(self.unique_events), "mode": 3*len(self.unique_events)/2}
+        for i in range(self.population_size):
+            self.trees.append(tree_gen.apply(parameters=parameters))
+            # self.logger.info(self.trees[i])
+
+
 
 
 # def generate_random_tree():
@@ -60,51 +51,11 @@ random.seed(6)
 # generate_random_tree()
 from pm4py.simulation.tree_generator import simulator as tree_gen
 from pm4py.simulation.tree_generator.variants.ptandloggenerator import GeneratedTree
-# GeneratedTree.alphabet = event_list
-parameters = {"min": 8, "max": 10, "mode": 9}
+# from pm4py.simulation.tree_generator.variants.basic
+
+# GeneratedTree.alphabet = ['a', 'b', 'c', 'd', 'e', 'f' ]
+parameters = {"min": 9, "max": 10, "mode": 9}
 
 from pm4py.evaluation.replay_fitness import evaluator as replay_fitness_evaluator
 
-def create_regex(tree_model: str) -> str:
-    tree_model = tree_model.replace(" ", "")
-    # regex_parallel = r"\+\(('(\w)'[,]?|(τ)[,]?)*\)"
-    regex_parallel = r"(\+\(('\w'[,]?|τ[,]?)*\))"
-    pattern = re.compile(regex_parallel)
-    res = pattern.findall(tree_model)
-    print(res)
-    print(tree_model)
-    if res:
-        for group in res:
-            g = group[0]
-            print(g)
-            proc = re.findall(r"[\wτ]", g)
-            print(proc)
-            perm = permutations(proc)
-            reg = "(" + "|".join(["".join(per) for per in list(perm)]) + ")"  # TODO zmien jak beda normalne dane
-            print(reg)
-            tree_model = tree_model.replace(g, reg)
-    return tree_model
-    # print(tree_model)
-    # print(pattern.findall(tree_model))
-    # print(pattern.search(tree_model).group(0))
-    # n = 0
-    # stack = []
-    # sign = tree_model[n]
-    # if sign == "-":
-    #     stack.append("(")
-    #     n += 4
-    #
-    # elif sign == "+":
-    #     stack.append("(")
-    #     n += 3
-    # elif sign == "X":
-    #
-    # elif sign == "*":
 
-    # elif sign == "O":
-
-for i in range(10):
-    tree = tree_gen.apply(parameters=parameters)
-# for _tree in tree:
-    print(create_regex(str(tree) + str(tree).replace("a", "h").replace("g", "i")))
-    print()
