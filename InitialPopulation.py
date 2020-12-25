@@ -19,7 +19,7 @@ class InitialPopulation:
 
     def create_initial_population(self):
         # parameters = {"events": self.unique_events}
-        parameters = {"min": len(self.unique_events), "max": 2*len(self.unique_events), "mode": 3*len(self.unique_events)/2}
+        parameters = {"min": len(self.unique_events), "max": 2*len(self.unique_events), "mode": 3*len(self.unique_events)/2, "silent": 0}
         for i in range(self.population_size):
             self.trees.append(tree_gen.apply(parameters=parameters))
             # self.logger.info(self.trees[i])

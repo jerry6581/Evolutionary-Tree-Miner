@@ -5,6 +5,7 @@ from typing import List
 import re
 import logging
 import collections
+import time
 
 
 def get_elite(tree_list, elite_size):
@@ -70,59 +71,210 @@ def crossover(worst_list, to_change_size):
 
 
 def mutation(worst_list: List[Tree.Tree], to_change_size, unique_events):
-    operations = ["Node changing", "Subtree removal", "Node addition"]
+    operations = ["Node changing", "Operator changing", "Subtree removal", "Node addition", "Node swapping"]
+    # operations = ["Node swapping"]
     mutation_count = round(len(worst_list) * to_change_size)
     to_draw = list(unique_events) + ["τ"]
     operator_list = ["→", "O", "X", "+", "*"]
     for _ in range(mutation_count):
         operation = random.choice(operations)
         tree_to_mutate = random.choice(worst_list)
+        model_activities = r"[a-z]"
+        matches = re.findall(model_activities, tree_to_mutate.tree_model)
+        missing_activities = unique_events - set(matches)
+        duplicated_activities = [item for item, count in collections.Counter(tree_to_mutate.tree_model).items() if
+                                 count > 1]
+        duplicated_activities = re.findall(model_activities, "".join(duplicated_activities))
         if operation == "Subtree removal":
+            # TODO change to tau in or
             # logging.info("Subtree removal")
             # logging.info(tree_to_mutate.tree_model)
+            logging.debug(bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} before" + bcolors.ENDC)
             try:
                 to_remove = select_random_nodes(tree_to_mutate.tree_model)
             except IndexError:
                 logging.info(
                     f"Nothing to remove in this tree, skipping for {str(tree_to_mutate)}")
                 continue
-            tree_to_mutate.tree_model = tree_to_mutate.tree_model.replace(to_remove, "").replace("(,", "(").replace(",)", ")")
+            tree_to_mutate.tree_model = tree_to_mutate.tree_model.replace(to_remove, "").replace("(,", "(").replace(",)", ")").replace(",,", ",")
+            logging.debug(
+                bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} after" + bcolors.ENDC)
             # logging.info(tree_to_mutate.tree_model)
         elif operation == "Node changing":
-
+            # TODO think about what happen if there are missing activities and no duplicates
             # logging.info("Node changing:" +  tree_to_mutate.tree_model)
-            reg = r"[a-z\*X\+O→τ]"
+            logging.debug(
+                bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} before" + bcolors.ENDC)
+            while duplicated_activities:
+                to_substitute = random.choice(duplicated_activities)
+                indexes_of_duplicates = [pos for pos, char in enumerate(tree_to_mutate.tree_model) if
+                                         char == to_substitute]
+                index_of_to_substitute = random.choice(indexes_of_duplicates)
+                duplicated_activities.remove(to_substitute)
+                if missing_activities:
+                    to_insert = random.choice(list(missing_activities))
+                    missing_activities.remove(to_insert)
+                else:
+                    to_insert = "τ"
+                tree_to_mutate.tree_model = tree_to_mutate.tree_model[:index_of_to_substitute] + to_insert + tree_to_mutate.tree_model[index_of_to_substitute + 1:]
+                # logging.info("Node changing after char: " + tree_to_mutate.tree_model)
+            logging.debug(
+                bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} after" + bcolors.ENDC)
+
+        elif operation == "Operator changing":
+            logging.debug(
+                bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} before" + bcolors.ENDC)
+            reg = r"[\*X\+O→]"
             random_node_match = random.choice(list(re.finditer(reg, tree_to_mutate.tree_model)))
             random_node_index = random_node_match.start()
-            random_node = random_node_match.group()
-            if re.match(r"[a-zτ]", random_node):
-                new_node = random.choice(to_draw)
-                tree_to_mutate.tree_model = tree_to_mutate.tree_model[:random_node_index] + new_node + tree_to_mutate.tree_model[random_node_index + 1:]
-                # logging.info("Node changing after char: " + tree_to_mutate.tree_model)
-            else:
-                new_operator_node = random.choice(operator_list)
-                tree_to_mutate.tree_model = tree_to_mutate.tree_model[:random_node_index] + new_operator_node + tree_to_mutate.tree_model[random_node_index + 1:]
-                # logging.info("Node changing after sign: " + tree_to_mutate.tree_model)
+            operator_list_new = list(operator_list)
+            operator_list_new.remove(random_node_match.group())
+            new_operator_node = random.choice(operator_list_new)
+            tree_to_mutate.tree_model = tree_to_mutate.tree_model[
+                                        :random_node_index] + new_operator_node + tree_to_mutate.tree_model[
+                                                                                  random_node_index + 1:]
+            # logging.info("Node changing after sign: " + tree_to_mutate.tree_model)
+            logging.debug(
+                bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} after" + bcolors.ENDC)
+        elif operation == "Node swapping":
+            logging.debug(
+                bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} before" + bcolors.ENDC)
+            reg = r"[a-zτ]"
+            try:
+                random_nodes_match = random.choices(list(re.finditer(reg, tree_to_mutate.tree_model)), k=2)
+            except IndexError:
+                continue # TODO trash this tree
+            random_node_index = random_nodes_match[0].start()
+            # logging.warning(tree_to_mutate.tree_model + "before")
+            tree_to_mutate.tree_model = tree_to_mutate.tree_model[
+                                        :random_node_index] + random_nodes_match[1].group() + tree_to_mutate.tree_model[random_node_index + 1:]
+            random_node_index = random_nodes_match[1].start()
+            tree_to_mutate.tree_model = tree_to_mutate.tree_model[
+                                        :random_node_index] + random_nodes_match[0].group() + tree_to_mutate.tree_model[random_node_index + 1:]
+            # logging.warning(tree_to_mutate.tree_model + "after")
+            # elif operation == "Subtree swapping":
+            logging.debug(
+                bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} after" + bcolors.ENDC)
+
+
         elif operation == "Node addition":
+            logging.debug(
+                bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} before" + bcolors.ENDC)
             # print("Node addition")
-            new_leaf = random.choice(to_draw)
-            new_leaf = f"{new_leaf}," if new_leaf == "τ" else f"'{new_leaf}',"
-            reg = r"[,\(]"
-            random_node_index = random.choice(list(re.finditer(reg, tree_to_mutate.tree_model))).start() + 1
-            tree_to_mutate.tree_model = tree_to_mutate.tree_model[:random_node_index] + new_leaf + tree_to_mutate.tree_model[random_node_index:]
-        # elif operation == "Flattening tree":
+            if len(missing_activities) > 0:
+                new_leaf = f"'{random.choice(list(missing_activities))}',"
+
+                reg = r"[,\(]"
+                random_node_index = random.choice(list(re.finditer(reg, tree_to_mutate.tree_model))).start() + 1
+                tree_to_mutate.tree_model = tree_to_mutate.tree_model[:random_node_index] + new_leaf + tree_to_mutate.tree_model[random_node_index:]
+                logging.debug(
+                    bcolors.OKBLUE + f"Starting {operation} for {tree_to_mutate.tree_model} after" + bcolors.ENDC)
+
+
+def flattening_tree(tree_list: List[Tree.Tree]):
+    # operators_reg = r"[\*X\+O→]"
+
+    operators = "*X+O→"
+    for t in tree_list:
+        logging.debug(bcolors.OKBLUE + f"Starting flattening for {t} before" + bcolors.ENDC)
+        duplicated_activities = [(item, count) for item, count in collections.Counter(t.tree_model).items() if
+                                 count > 1]
+        # duplicated_activities = re.findall(operators_reg, "".join(duplicated_activities))
+        for d in duplicated_activities:
+            if d[0] in operators:
+                for n in range(0, d[1]):
+                    first_duplicate_index = t.tree_model.index(d[0])
+                    stack_size = 0
+                    for i, ch in enumerate(t.tree_model[first_duplicate_index + 1:]):
+                        if ch == "(":
+                            stack_size += 1
+                        elif ch == ")":
+                            stack_size -= 1
+                        if stack_size == 1 and ch == d[0]:
+                            # first_duplicate_index + i , first_duplicate_index + i + 1 -> remove
+                            inner_stack = 0
+                            for j, inner_char in enumerate(t.tree_model[first_duplicate_index + i + 2:]):
+                                if inner_char == "(":
+                                    inner_stack += 1
+                                elif inner_char == ")":
+                                    inner_stack -= 1
+                                if inner_stack == 0:
+                                    close_index = j + first_duplicate_index + i + 2
+                                    t.tree_model = t.tree_model[: first_duplicate_index + i + 1] + t.tree_model[first_duplicate_index + i + 3: close_index] + t.tree_model[close_index + 1:]
+                                    # stack_size = 0
+                                    break
+                            logging.debug(bcolors.OKBLUE + f"Starting flattening for {t} after" + bcolors.ENDC)
+                            break
+
+
+# def test():
+#     operators_reg = r"[\*X\+O→]"
+#     t = Tree.Tree("+('a',O(O('b','c'),X('e',+('d',X('f','τ')))))")
+#     duplicated_activities = [item for item, count in collections.Counter(t.tree_model).items() if
+#                              count > 1]
+#
+#     duplicated_activities = re.findall(operators_reg, "".join(duplicated_activities))
+#     print(duplicated_activities)
+#     for duplicate in duplicated_activities:
+#         first_duplicate_index = t.tree_model.index(duplicate)
+#         stack_size = 0
+#         for i, ch in enumerate(t.tree_model[first_duplicate_index + 1:]):
+#             if ch == "(":
+#                 stack_size += 1
+#             elif ch == ")":
+#                 stack_size -= 1
+#             if stack_size == 1 and ch == duplicate:
+#                 # first_duplicate_index + i , first_duplicate_index + i + 1 -> remove
+#                 inner_stack = 0
+#                 for j, inner_char in enumerate(t.tree_model[first_duplicate_index + i + 2:]):
+#                     # print(j)
+#                     print(inner_char)
+#                     if inner_char == "(":
+#                         inner_stack += 1
+#                     elif inner_char == ")":
+#                         inner_stack -= 1
+#                     if inner_stack == 0:
+#                         close_index = j + first_duplicate_index + i
+#                         logging.info(t.tree_model + f"BEFORE !!!! close {close_index}")
+#                         tmp = t.tree_model[: first_duplicate_index + i + 1] + t.tree_model[
+#                                                                               first_duplicate_index + i + 3: close_index + 2]
+#                         logging.info(tmp + "Middle !!!!!!")
+#                         t.tree_model = tmp + t.tree_model[close_index + 3 :]
+#                         logging.info(t.tree_model + "AFTER !!!!")
+#                         break
+# if __name__ == "__main__":
+#     logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(message)s', datefmt='%I:%M:%S', level=logging.INFO)
+#     test()
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 
 def run(tree_list, unique_events, trace_list, all_possible_traces, nr_generation, stop_fitness):
     for _ in range(nr_generation):
+        start = time.time()
+        logging.debug(bcolors.WARNING + f"Starting generation {_} at {start}" + bcolors.ENDC)
         logging.info(f"Best fitness for {_}: {max(tree_list).fitness}")
         elite_list, worst_list = get_elite(tree_list, 0.3)
-        worst_list_after_change = random_creation(worst_list, 0.1, unique_events)
-        mutation(worst_list_after_change, 0.3, unique_events)
+        logging.debug(bcolors.WARNING + f"Time after get_elite: {time.time() - start}" + bcolors.ENDC)
+        worst_list_after_change = random_creation(worst_list, 0.3, unique_events)
+        logging.debug(bcolors.WARNING + f"Time after random creation: {time.time() - start}" + bcolors.ENDC)
+        mutation(worst_list_after_change, 0.5, unique_events)
+        logging.debug(bcolors.WARNING + f"Time after mutation: {time.time() - start}" + bcolors.ENDC)
         crossover(worst_list_after_change, 0.3)
-
+        logging.debug(bcolors.WARNING + f"Time after crossover: {time.time() - start}" + bcolors.ENDC)
+        flattening_tree(worst_list)
+        logging.debug(bcolors.WARNING + f"Time after flattening: {time.time() - start}" + bcolors.ENDC)
         for t in worst_list_after_change:
             t.count_fitness(10, 5, 1, trace_list, unique_events, all_possible_traces)
+        logging.debug(bcolors.WARNING + f"Time after counting fitness: {time.time() - start}" + bcolors.ENDC)
         if max(tree_list).fitness > stop_fitness:
             logging.info(f"Found tree with satisfying replay fitness!: {max(tree_list).fitness}")
             break

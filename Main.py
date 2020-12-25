@@ -5,6 +5,7 @@ import utility
 import Tree
 from Data import ImportData
 from InitialPopulation import InitialPopulation
+import datetime
 
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(message)s', datefmt='%I:%M:%S', level=logging.INFO)
 
@@ -14,7 +15,7 @@ if __name__ == "__main__":
     log.extract_traces_and_events()
     logging.info(log.trace_list)
     logging.info(log.unique_events)
-    population = InitialPopulation(log.unique_events, 100)
+    population = InitialPopulation(log.unique_events, 50)
     population.create_initial_population()
     all_possible_traces = []
     for n in range(1, len(log.unique_events) + 1):
@@ -25,7 +26,7 @@ if __name__ == "__main__":
     tree_list = []
     for t in population.trees:
         tree = Tree.Tree(str(t))
-        tree.count_fitness(10, 5, 1, log.trace_list, log.unique_events, all_possible_traces)
+        tree.count_fitness(10, 8, 1, log.trace_list, log.unique_events, all_possible_traces)
         tree_list.append(tree)
         # print(str(tree))
         # reg = utility.create_tree_regex(str(tree))
@@ -33,9 +34,9 @@ if __name__ == "__main__":
         # precision = utility.count_precision(all_possible_traces, reg, matches)
         # print(f"Precision: {precision}")
         # print(utility.count_simplicity(str(tree), log.unique_events))
-    best_trees = utility.run(tree_list, log.unique_events, log.trace_list, all_possible_traces, 100, 0.8)
+    best_trees = utility.run(tree_list, log.unique_events, log.trace_list, all_possible_traces, 300, 0.8)
     for t in best_trees:
-        print(f"Tree: {t.tree_model} Replay fitness: {t.metrics['replay fitness']} Precision: {t.metrics['precision']} Simplicity: {t.metrics['simplicity']} Fitness: {t.fitness}")
+        print(f"Tree: {t.tree_model}\n Replay fitness: {t.metrics['replay fitness']} Precision: {t.metrics['precision']} Simplicity: {t.metrics['simplicity']} Fitness: {t.fitness}")
 
     # logging.info([i.fitness for i in worst_list])
 
