@@ -21,7 +21,7 @@ def random_creation(worst_list, to_change_size, unique_events):
     population = InitialPopulation(unique_events, to_delete_count)
     population.create_initial_population()
     for t in population.trees:
-        tree = Tree.Tree(str(t))
+        tree = Tree.Tree(t)
         worst_list.append(tree)
     return worst_list
 
@@ -261,7 +261,7 @@ def run(tree_list, unique_events, trace_list, all_possible_traces, nr_generation
     for _ in range(nr_generation):
         start = time.time()
         logging.debug(bcolors.WARNING + f"Starting generation {_} at {start}" + bcolors.ENDC)
-        logging.info(f"Best fitness for {_}: {max(tree_list).fitness}")
+        logging.info(f"Best fitness after {_} generations: {max(tree_list).fitness}")
         elite_list, worst_list = get_elite(tree_list, 0.3)
         logging.debug(bcolors.WARNING + f"Time after get_elite: {time.time() - start}" + bcolors.ENDC)
         worst_list_after_change = random_creation(worst_list, 0.3, unique_events)
@@ -270,7 +270,7 @@ def run(tree_list, unique_events, trace_list, all_possible_traces, nr_generation
         logging.debug(bcolors.WARNING + f"Time after mutation: {time.time() - start}" + bcolors.ENDC)
         crossover(worst_list_after_change, 0.3)
         logging.debug(bcolors.WARNING + f"Time after crossover: {time.time() - start}" + bcolors.ENDC)
-        flattening_tree(worst_list)
+        flattening_tree(worst_list_after_change)
         logging.debug(bcolors.WARNING + f"Time after flattening: {time.time() - start}" + bcolors.ENDC)
         for t in worst_list_after_change:
             t.count_fitness(10, 5, 1, trace_list, unique_events, all_possible_traces)

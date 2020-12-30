@@ -15,7 +15,7 @@ if __name__ == "__main__":
     log.extract_traces_and_events()
     logging.info(log.trace_list)
     logging.info(log.unique_events)
-    population = InitialPopulation(log.unique_events, 50)
+    population = InitialPopulation(log.unique_events, 100)
     population.create_initial_population()
     all_possible_traces = []
     for n in range(1, len(log.unique_events) + 1):
@@ -25,18 +25,28 @@ if __name__ == "__main__":
     # print(len(all_possible_traces))
     tree_list = []
     for t in population.trees:
-        tree = Tree.Tree(str(t))
-        tree.count_fitness(10, 8, 1, log.trace_list, log.unique_events, all_possible_traces)
+        tree = Tree.Tree(t)
+        # tree.tree_model = "+(O('a','b'),'c')"
+        # tree.tree_model = "*(*('a','d','c'),'g','f')"
+
+        # tree.count_fitness(10, 5, 1, log.trace_list, log.unique_events, all_possible_traces)
+        logging.info(tree.tree_regex)
         tree_list.append(tree)
+    utility.flattening_tree(tree_list)
+    for tree in tree_list:
+        tree.count_fitness(10, 5, 1, log.trace_list, log.unique_events, all_possible_traces)
+
         # print(str(tree))
         # reg = utility.create_tree_regex(str(tree))
         # matches, quality_map[str(tree)] = utility.count_replay_fitness(reg, log.trace_list)
         # precision = utility.count_precision(all_possible_traces, reg, matches)
         # print(f"Precision: {precision}")
         # print(utility.count_simplicity(str(tree), log.unique_events))
-    best_trees = utility.run(tree_list, log.unique_events, log.trace_list, all_possible_traces, 300, 0.8)
+    #To zakomentowalem
+    best_trees = utility.run(tree_list, log.unique_events, log.trace_list, all_possible_traces, 400, 0.8)
     for t in best_trees:
-        print(f"Tree: {t.tree_model}\n Replay fitness: {t.metrics['replay fitness']} Precision: {t.metrics['precision']} Simplicity: {t.metrics['simplicity']} Fitness: {t.fitness}")
+        print(f"Tree: {t.tree_model} Replay fitness: {t.metrics['replay fitness']} Precision: {t.metrics['precision']} Simplicity: {t.metrics['simplicity']} Fitness: {t.fitness} Regex: {t.tree_regex}")
+
 
     # logging.info([i.fitness for i in worst_list])
 
