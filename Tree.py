@@ -82,7 +82,7 @@ class Tree:
                 )
                 # print(nodes)
                 if sign == "→":
-                    reg = "".join(nodes)  # TODO zmien jak beda normalne dane
+                    reg = f"#{'@#'.join(nodes)}@"  # TODO zmien jak beda normalne dane
                 elif sign == "+":
                     per = [f"#{node}@" for node in nodes]
                     per2 = ["#"+ re.sub(r"\?P<(gr.[0-9]*)>.*\1&", "?P=\g<1>", node) + "@" for node in nodes]
@@ -94,7 +94,7 @@ class Tree:
                         f"#?=#{'|'.join(per)}@"
                         + "{"
                         + str(len(nodes))
-                        + "}@#?!#?P<"
+                        + "}@#?!.*#?P<"
                         + f"{name}>.{name}&@#{'|'.join(per2)}@*#?P="
                         + f"{name}@@#{'|'.join(per2)}@"
                         + "{"
@@ -108,16 +108,16 @@ class Tree:
                     # )  # TODO zmien jak beda normalne dane
                     # logging.info(f"I  !!!!!!!!!!!!{reg.replace('#', '(').replace('@', ')')}")
                 elif sign == "X":
-                    reg = f'#{"|".join(nodes)}@'  # TODO zmien jak beda normalne dane
+                    reg = f'#{"@|#".join(nodes)}@'  # TODO zmien jak beda normalne dane
                 elif sign == "*":
                     # logging.info(tree_model)
                     try:
                         # logging.info(nodes)
-                        args = "".join(nodes[:-1])
+                        args = "@#".join(nodes[:-1])
                         if len(args) == 0:
                             reg = nodes[-1]
                         else:
-                            reg = f"#{args}?@*{nodes[-1]}"  # TODO zmien jak beda normalne dane
+                            reg = f"##{args}@?@*#{nodes[-1]}@"  # TODO zmien jak beda normalne dane
                             # reg = f"#{nodes[0]}{nodes[1]}@*{nodes[2]}"  # TODO zmien jak beda normalne dane
                     except IndexError:
                         logging.info("Error")
@@ -125,16 +125,33 @@ class Tree:
                     # logging.info(reg)
                 elif sign == "O":
                     per = [f"#{node}@" for node in nodes]
+                    per2 = ["#"+ re.sub(r"\?P<(gr.[0-9]*)>.*\1&", "?P=\g<1>", node) + "@" for node in nodes]
+                    # logging.info([p.replace("#", "(").replace("@", ")") for p in per])
+                    # logging.info([p.replace("#", "(").replace("@", ")") for p in per2])
                     name = f"gro{str(Tree.unique_number)}"
                     Tree.unique_number += 1
                     reg = (
-                        f"#?P<{name}>#{'|'.join(per)}@{name}"
-                        + r"&@#?!#?P="
-                        + name
-                        + "@@{"
+                        f"#?=#{'|'.join(per)}@"
+                        + "{0%"
+                        + str(len(nodes))
+                        + "}@#?!.*#?P<"
+                        + f"{name}>.{name}&@#{'|'.join(per2)}@*#?P="
+                        + f"{name}@@#{'|'.join(per2)}@"
+                        + "{0%"
                         + str(len(nodes))
                         + "}"
                     )
+                    # per = [f"#{node}@" for node in nodes]
+                    # name = f"gro{str(Tree.unique_number)}"
+                    # Tree.unique_number += 1
+                    # reg = (
+                    #     f"#?P<{name}>#{'|'.join(per)}@{name}"
+                    #     + r"&@#?!.*#?P="
+                    #     + name
+                    #     + "@@{"
+                    #     + str(len(nodes))
+                    #     + "}"
+                    # )
                     # logging.info(f"O  !!!!!!!!!!!!{reg.replace('#', '(').replace('@', ')')}")
                     # perm = []
                     # for n in range(2, len(nodes) + 1):
@@ -154,7 +171,7 @@ class Tree:
                 break
         # logging.info("Return" + f"^{tree_model.replace('#', '(').replace('@', ')')}$")
         tree_model = re.sub("gr.[0-9]*&", "", tree_model)
-        return "^{}$".format(tree_model.replace("#", "(").replace("@", ")").replace("&", ""))
+        return "^{}$".format(tree_model.replace("#", "(").replace("@", ")").replace("&", "").replace("%", ","))
 
     def count_replay_fitness(self, traces):
         matches = 0
@@ -167,8 +184,13 @@ class Tree:
             logging.info(self.tree_model)
             logging.info(self.tree_regex)
         for trace in traces:
-            if pattern.match(trace):
+            match = pattern.match(trace)
+            if match:
+                logging.info(f"Group: {match.group()} Groups: {set(match.groups())}" )
+                # counter += visited edges * ((all edges - visited edges) / all edges)
+                # all_visits += visited edges
                 matches += 1
+        # precision  = 1 - (counter / all_visits)
         self.metrics["replay fitness"] = matches / len(traces)
 
         return matches, self.metrics["replay fitness"]
@@ -208,6 +230,8 @@ class Tree:
         return self.metrics["simplicity"]
 
     def count_precision(self, all_possible_traces, replay_fitness_matches):
+
+
         try:
             regex = re.compile(self.tree_regex)
         except Exception:
