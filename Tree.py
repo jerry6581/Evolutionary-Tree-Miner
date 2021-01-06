@@ -1,8 +1,8 @@
 import re
 import collections
 import logging
-
-
+import regex
+import time
 import os
 import psutil
 import sys
@@ -141,17 +141,6 @@ class Tree:
                         + str(len(nodes))
                         + "}"
                     )
-                    # per = [f"#{node}@" for node in nodes]
-                    # name = f"gro{str(Tree.unique_number)}"
-                    # Tree.unique_number += 1
-                    # reg = (
-                    #     f"#?P<{name}>#{'|'.join(per)}@{name}"
-                    #     + r"&@#?!.*#?P="
-                    #     + name
-                    #     + "@@{"
-                    #     + str(len(nodes))
-                    #     + "}"
-                    # )
                     # logging.info(f"O  !!!!!!!!!!!!{reg.replace('#', '(').replace('@', ')')}")
                     # perm = []
                     # for n in range(2, len(nodes) + 1):
@@ -171,22 +160,27 @@ class Tree:
                 break
         # logging.info("Return" + f"^{tree_model.replace('#', '(').replace('@', ')')}$")
         tree_model = re.sub("gr.[0-9]*&", "", tree_model)
-        return "^{}$".format(tree_model.replace("#", "(").replace("@", ")").replace("&", "").replace("%", ","))
+        return "^({})$".format(tree_model.replace("#", "(").replace("@", ")").replace("&", "").replace("%", ","))
 
     def count_replay_fitness(self, traces):
+        start= time.time()
         matches = 0
         # logging.info("Tree_regex: " + self.tree_regex)
         # logging.info("Tree model: " + self.tree_model)
         try:
-            pattern = re.compile(self.tree_regex)
+            pattern = regex.compile(self.tree_regex)
         except Exception as e:
             logging.info(e)
             logging.info(self.tree_model)
             logging.info(self.tree_regex)
         for trace in traces:
             match = pattern.match(trace)
+            if time.time() - start > 10:
+                logging.info(self.tree_regex)
             if match:
-                logging.info(f"Group: {match.group()} Groups: {set(match.groups())}" )
+                # logging.info(f"Group: {match.group()} Groups: {match.groups()}" )
+                # for i in range(match.captures)
+                # logging.info(f"Captures: {match.captures(3)}")
                 # counter += visited edges * ((all edges - visited edges) / all edges)
                 # all_visits += visited edges
                 matches += 1
@@ -230,20 +224,20 @@ class Tree:
         return self.metrics["simplicity"]
 
     def count_precision(self, all_possible_traces, replay_fitness_matches):
+        # try:
+        #     regex = re.compile(self.tree_regex)
+        # except Exception:
+        #     logging.warning(self.tree_model)
+        #     logging.warning(self.tree_regex)
+        # matches = 0
+        # for permutation in all_possible_traces:
+        #     if regex.match(permutation):
+        #         matches += 1
+        # self.metrics["precision"] = 1 - (
+        #     (matches - replay_fitness_matches) / len(all_possible_traces)
+        # )  # abc bca cab - xor
+        self.metrics["precision"] = 0.5
 
-
-        try:
-            regex = re.compile(self.tree_regex)
-        except Exception:
-            logging.warning(self.tree_model)
-            logging.warning(self.tree_regex)
-        matches = 0
-        for permutation in all_possible_traces:
-            if regex.match(permutation):
-                matches += 1
-        self.metrics["precision"] = 1 - (
-            (matches - replay_fitness_matches) / len(all_possible_traces)
-        )  # abc bca cab - xor
         return self.metrics["precision"]
 
     def count_fitness(

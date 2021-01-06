@@ -12,6 +12,7 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(message)s', dat
 def test():
     log = ImportData("Artificial - Small Process.xes")
     log.extract_traces_and_events()
+    log.change_event_names()
     logging.info(log.trace_list)
     logging.info(log.unique_events)
     samples = {
@@ -41,11 +42,12 @@ def test():
             logging.info(f"Invalid regex match for {trees[i]}, expected {samples[sample]}, got {trees[i].metrics['replay fitness']}")
 
 def start():
-    log = ImportData("Artificial - Small Process.xes")
+    log = ImportData("Artificial - Loan Process.xes")
     log.extract_traces_and_events()
+    log.change_event_names()
     logging.info(log.trace_list)
     logging.info(log.unique_events)
-    population = InitialPopulation(log.unique_events, 100)
+    population = InitialPopulation(log.unique_events, 20)
     population.create_initial_population()
     all_possible_traces = []
     for n in range(1, len(log.unique_events) + 1):
@@ -73,8 +75,8 @@ def start():
         # precision = utility.count_precision(all_possible_traces, reg, matches)
         # print(f"Precision: {precision}")
         # print(utility.count_simplicity(str(tree), log.unique_events))
-    # To zakomentowalem
-    best_trees = utility.run(tree_list, log.unique_events, log.trace_list, all_possible_traces, 400, 0.8)
+
+    best_trees = utility.run(tree_list, log.unique_events, log.trace_list, all_possible_traces, 100, 0.8)
     for t in best_trees:
         print(
             f"Tree: {t.tree_model} Replay fitness: {t.metrics['replay fitness']} Precision: {t.metrics['precision']} Simplicity: {t.metrics['simplicity']} Fitness: {t.fitness} Regex: {t.tree_regex}")
@@ -96,6 +98,6 @@ def start():
 
 
 if __name__ == "__main__":
- # start()
- test()
+    # start()
+    test()
 
