@@ -1,13 +1,25 @@
 import logging
 from itertools import chain, permutations
-
+import pickle
 import utility
 import Tree
 from Data import ImportData
 from InitialPopulation import InitialPopulation
 import datetime
-
+from TestTree import create_tree, compare_to_trace
+from pm4py.evaluation.replay_fitness import evaluator as replay_fitness
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(message)s', datefmt='%I:%M:%S', level=logging.INFO)
+
+SAMPLES = {
+    "→('a',+('b','c','d'),'f')": 4,
+    "→('a',X('b','c','d'),'e','f')": 1,
+    "X('e',+('a','b','c','d','f'))": 4,
+    "→('a',O('b','c','d','e'),'f')": 6,
+    "+('a',+('b','c','d'),'f')": 4,
+    "→('a','c',+('d','b'),'f')": 2,
+    "*('a',O('b','c',O('d','e')),f)": 6,
+    "O(→('a',+('c','b','d')),'e','f')": 4
+}
 
 def test():
     log = ImportData("Artificial - Small Process.xes")
@@ -15,16 +27,7 @@ def test():
     log.change_event_names()
     logging.info(log.trace_list)
     logging.info(log.unique_events)
-    samples = {
-        "→('a',+('b','c','d'),'f')": 4,
-        "→('a',X('b','c','d'),'e','f')": 1,
-        "X('e',+('a','b','c','d','f'))": 4,
-        "→('a',O('b','c','d','e'),'f')": 6,
-        "+('a',+('b','c','d'),'f')": 4,
-        "→('a','c',+('d','b'),'f')": 2,
-        "*('a',O('b','c',O('d','e')),f)": 6,
-        "O(→('a',+('c','b','d')),'e','f')": 4
-    }
+
     population = InitialPopulation(log.unique_events, 8)
     population.create_initial_population()
     all_possible_traces = []
@@ -33,13 +36,13 @@ def test():
     trees = []
     for i in range(0, 8):
         trees.append(Tree.Tree(population.trees[i]))
-        sample = [k for k, v in samples.items()][i]
+        sample = [k for k, v in SAMPLES.items()][i]
         trees[i].tree_model = sample
         trees[i].count_fitness(10, 5, 1, log.trace_list, log.unique_events, all_possible_traces)
         logging.info(
             f"Tree: {trees[i].tree_model} Replay fitness: {trees[i].metrics['replay fitness']} Precision: {trees[i].metrics['precision']} Simplicity: {trees[i].metrics['simplicity']} Fitness: {trees[i].fitness} Regex: {trees[i].tree_regex}")
-        if trees[i].metrics['replay fitness'] != samples[sample]/6:
-            logging.info(f"Invalid regex match for {trees[i]}, expected {samples[sample]}, got {trees[i].metrics['replay fitness']}")
+        if trees[i].metrics['replay fitness'] != SAMPLES[sample]/6:
+            logging.info(f"Invalid regex match for {trees[i]}, expected {SAMPLES[sample]}, got {trees[i].metrics['replay fitness']}")
 
 def start():
     log = ImportData("Artificial - Loan Process.xes")
@@ -61,6 +64,7 @@ def start():
         # tree.tree_model = "+('a','b','c')"
         # tree.tree_model = "+(O('a','b'),'c')"
         # tree.tree_model = "*(*('a','d','c'),'g','f')"
+
 
         # tree.count_fitness(10, 5, 1, log.trace_list, log.unique_events, all_possible_traces)
         tree_list.append(tree)
@@ -95,9 +99,32 @@ def start():
 
     # print(log.event_log[0])
     # print(log.event_log[0][0]['concept:name'])
-
+def test_tree_creation():
+    log = ImportData("Artificial - Small Process.xes")
+    log.extract_traces_and_events()
+    log.change_event_names()
+    logging.info(log.trace_list)
+    logging.info(log.unique_events)
+    population = InitialPopulation(log.unique_events, 100)
+    population.create_initial_population()
+    trees = [create_tree(tree) for tree in population.trees]
+    # with open('trees.pkl', "wb") as pickle_file:
+    #     pickle.dump(trees, pickle_file)
+    # with open('to_check.pkl', "rb") as pickle_file:
+    #     trees = pickle.load(pickle_file)
+    # to_save = []
+    for tree in trees:
+        tree.count_fitness(log.trace_list)
+        logging.info(tree)
+        logging.info(tree.replay_fitness)
+    #     if tree.replay_fitness >= 0.16:
+    #         to_save.append(tree)
+    # with open('to_check.pkl', "wb") as pickle_file:
+    #     pickle.dump(to_save, pickle_file)
 
 if __name__ == "__main__":
     # start()
-    test()
+    # test()
+    test_tree_creation()
+
 

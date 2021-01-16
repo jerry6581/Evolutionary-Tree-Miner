@@ -179,32 +179,38 @@ def flattening_tree(tree_list: List[Tree.Tree]):
         logging.debug(bcolors.OKBLUE + f"Starting flattening for {t} before" + bcolors.ENDC)
         duplicated_activities = [(item, count) for item, count in collections.Counter(t.tree_model).items() if
                                  count > 1]
-        # duplicated_activities = re.findall(operators_reg, "".join(duplicated_activities))
+        logging.debug(bcolors.OKBLUE + f"Duplicated operators {duplicated_activities}" + bcolors.ENDC)
         for d in duplicated_activities:
             if d[0] in operators:
+                logging.debug(bcolors.OKBLUE + f"Duplicated operators {d[0]}" + bcolors.ENDC)
                 for n in range(0, d[1]):
-                    first_duplicate_index = t.tree_model.index(d[0])
-                    stack_size = 0
-                    for i, ch in enumerate(t.tree_model[first_duplicate_index + 1:]):
-                        if ch == "(":
-                            stack_size += 1
-                        elif ch == ")":
-                            stack_size -= 1
-                        if stack_size == 1 and ch == d[0]:
-                            # first_duplicate_index + i , first_duplicate_index + i + 1 -> remove
-                            inner_stack = 0
-                            for j, inner_char in enumerate(t.tree_model[first_duplicate_index + i + 2:]):
-                                if inner_char == "(":
-                                    inner_stack += 1
-                                elif inner_char == ")":
-                                    inner_stack -= 1
-                                if inner_stack == 0:
-                                    close_index = j + first_duplicate_index + i + 2
-                                    t.tree_model = t.tree_model[: first_duplicate_index + i + 1] + t.tree_model[first_duplicate_index + i + 3: close_index] + t.tree_model[close_index + 1:]
-                                    # stack_size = 0
-                                    break
-                            logging.debug(bcolors.OKBLUE + f"Starting flattening for {t} after" + bcolors.ENDC)
-                            break
+                    operator_reg = d[0] if d[0] in "XO→" else r"\{}".format(d[0])
+                    # logging.info(operator_reg)
+                    for first_duplicate_index in re.finditer(operator_reg, t.tree_model):
+                        first_duplicate_index = first_duplicate_index.start()
+                        # logging.info(first_duplicate_index)
+                    # first_duplicate_index = t.tree_model.index(d[0])
+                        stack_size = 0
+                        for i, ch in enumerate(t.tree_model[first_duplicate_index + 1:]):
+                            if ch == "(":
+                                stack_size += 1
+                            elif ch == ")":
+                                stack_size -= 1
+                            if stack_size == 1 and ch == d[0]:
+                                # first_duplicate_index + i , first_duplicate_index + i + 1 -> remove
+                                inner_stack = 0
+                                for j, inner_char in enumerate(t.tree_model[first_duplicate_index + i + 2:]):
+                                    if inner_char == "(":
+                                        inner_stack += 1
+                                    elif inner_char == ")":
+                                        inner_stack -= 1
+                                    if inner_stack == 0:
+                                        close_index = j + first_duplicate_index + i + 2
+                                        t.tree_model = t.tree_model[: first_duplicate_index + i + 1] + t.tree_model[first_duplicate_index + i + 3: close_index] + t.tree_model[close_index + 1:]
+                                        # stack_size = 0
+                                        break
+                                logging.debug(bcolors.OKBLUE + f"Starting flattening for {t} after" + bcolors.ENDC)
+                                break
 
 
 # def test():

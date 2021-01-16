@@ -141,6 +141,17 @@ class Tree:
                         + str(len(nodes))
                         + "}"
                     )
+                    # per = [f"#{node}@" for node in nodes]
+                    # name = f"gro{str(Tree.unique_number)}"
+                    # Tree.unique_number += 1
+                    # reg = (
+                    #     f"#?P<{name}>#{'|'.join(per)}@{name}"
+                    #     + r"&@#?!.*#?P="
+                    #     + name
+                    #     + "@@{"
+                    #     + str(len(nodes))
+                    #     + "}"
+                    # )
                     # logging.info(f"O  !!!!!!!!!!!!{reg.replace('#', '(').replace('@', ')')}")
                     # perm = []
                     # for n in range(2, len(nodes) + 1):
@@ -162,32 +173,32 @@ class Tree:
         tree_model = re.sub("gr.[0-9]*&", "", tree_model)
         return "^({})$".format(tree_model.replace("#", "(").replace("@", ")").replace("&", "").replace("%", ","))
 
-    def count_replay_fitness(self, traces):
-        start= time.time()
-        matches = 0
-        # logging.info("Tree_regex: " + self.tree_regex)
-        # logging.info("Tree model: " + self.tree_model)
-        try:
-            pattern = regex.compile(self.tree_regex)
-        except Exception as e:
-            logging.info(e)
-            logging.info(self.tree_model)
-            logging.info(self.tree_regex)
-        for trace in traces:
-            match = pattern.match(trace)
-            if time.time() - start > 10:
-                logging.info(self.tree_regex)
-            if match:
-                # logging.info(f"Group: {match.group()} Groups: {match.groups()}" )
-                # for i in range(match.captures)
-                # logging.info(f"Captures: {match.captures(3)}")
-                # counter += visited edges * ((all edges - visited edges) / all edges)
-                # all_visits += visited edges
-                matches += 1
-        # precision  = 1 - (counter / all_visits)
-        self.metrics["replay fitness"] = matches / len(traces)
+    # def count_replay_fitness(self, traces):
+    #     start= time.time()
+    #     matches = 0
+    #     # logging.info("Tree_regex: " + self.tree_regex)
+    #     # logging.info("Tree model: " + self.tree_model)
+    #     try:
+    #         pattern = regex.compile(self.tree_regex)
+    #     except Exception as e:
+    #         logging.info(e)
+    #         logging.info(self.tree_model)
+    #         logging.info(self.tree_regex)
+    #     for trace in traces:
+    #         match = pattern.match(trace)
+    #         if time.time() - start > 10:
+    #             logging.info(self.tree_model)
+    #         if match:
+    #             # logging.info(f"Group: {match.group()} Groups: {match.groups()}" )
+    #             # for i in range(match.captures)
+    #             # logging.info(f"Captures: {match.captures(3)}")
+    #             # counter += visited edges * ((all edges - visited edges) / all edges)
+    #             # all_visits += visited edges
+    #             matches += 1
+    #     # precision  = 1 - (counter / all_visits)
+    #     self.metrics["replay fitness"] = matches / len(traces)
 
-        return matches, self.metrics["replay fitness"]
+        # return matches, self.metrics["replay fitness"]
 
     def count_simplicity(self, unique_events):
         # PYTANIE - czy root ma byc liczony jako node !!!!! I czy ta metoda liczenia simplicity jest OK
@@ -223,22 +234,44 @@ class Tree:
         # print(f"Mianownik: {denominator}")
         return self.metrics["simplicity"]
 
-    def count_precision(self, all_possible_traces, replay_fitness_matches):
-        # try:
-        #     regex = re.compile(self.tree_regex)
-        # except Exception:
-        #     logging.warning(self.tree_model)
-        #     logging.warning(self.tree_regex)
-        # matches = 0
-        # for permutation in all_possible_traces:
-        #     if regex.match(permutation):
-        #         matches += 1
-        # self.metrics["precision"] = 1 - (
-        #     (matches - replay_fitness_matches) / len(all_possible_traces)
-        # )  # abc bca cab - xor
-        self.metrics["precision"] = 0.5
-
-        return self.metrics["precision"]
+    # def count_precision(self, all_possible_traces, replay_fitness_matches):
+    #     try:
+    #         regex = re.compile(self.tree_regex)
+    #     except Exception:
+    #         logging.warning(self.tree_model)
+    #         logging.warning(self.tree_regex)
+    #     matches = 0
+    #     for permutation in all_possible_traces:
+    #         if regex.match(permutation):
+    #             matches += 1
+    #     self.metrics["precision"] = 1 - (
+    #         (matches - replay_fitness_matches) / len(all_possible_traces)
+    #     )  # abc bca cab - xor
+    #     # self.metrics["precision"] = 0.3
+    #
+    #     return self.metrics["precision"]
+    def count_rep_and_prec(self, all_possible_traces, traces):
+        start = time.time()
+        try:
+            pattern = re.compile(self.tree_regex)
+        except Exception:
+            logging.warning(self.tree_model)
+            logging.warning(self.tree_regex)
+        fitness_matches = 0
+        prec_matches = 0
+        for permutation in all_possible_traces:
+            if time.time() - start > 10:
+                logging.info(self.tree_model)
+            if pattern.match(permutation):
+                if permutation in traces:
+                    fitness_matches += 1
+                prec_matches += 1
+        self.metrics["precision"] = 1 - (
+            (prec_matches - fitness_matches) / len(all_possible_traces)
+        )  # abc bca cab - xor
+        # self.metrics["precision"] = 0.3
+        self.metrics["replay fitness"] = fitness_matches / len(traces)
+        return self.metrics["precision"], self.metrics["replay fitness"]
 
     def count_fitness(
         self,
@@ -250,12 +283,12 @@ class Tree:
         all_possible_traces,
     ):
         self.tree_regex = self.create_tree_regex()
-        matches, replay_fitness = self.count_replay_fitness(traces)
-        replay_fitness = replay_fitness * replay_fitness_weight
-        precision = (
-            self.count_precision(all_possible_traces, matches) * precision_weight
-        )
+        # matches, replay_fitness = self.count_replay_fitness(traces)
+
+        precision, replay_fitness = self.count_rep_and_prec(all_possible_traces, traces)
         simplicity = self.count_simplicity(unique_events) * simplicity_weight
+        replay_fitness *= replay_fitness_weight
+        precision *= precision_weight
         self.fitness = (replay_fitness + precision + simplicity) / (
             replay_fitness_weight + precision_weight + simplicity_weight
         )
