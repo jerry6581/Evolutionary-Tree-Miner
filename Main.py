@@ -111,14 +111,20 @@ def test_tree_creation():
     trees = [create_tree(tree) for tree in population.trees]
     # with open('trees.pkl', "wb") as pickle_file:
     #     pickle.dump(trees, pickle_file)
-    with open('to_check.pkl', "rb") as pickle_file:
-        trees = pickle.load(pickle_file)
+    # with open('to_check.pkl', "rb") as pickle_file:
+    #     trees = pickle.load(pickle_file)
     # to_save = []
 
     for tree in trees:
-        tree.count_fitness(log.trace_list)
+        tree.count_fitness(log.unique_events, log.trace_list,10, 5,1,0.1)
         logging.info(tree)
-        logging.info(tree.replay_fitness)
+        if tree.replay_fitness > 0:
+            logging.info("Jest!!!!!!!!!!!!!!!!!!!")
+        logging.info(f"Replay fitness: {tree.replay_fitness}")
+        logging.info(f"Precision: {tree.precision}")
+        logging.info(f"Simplicity: {tree.simplicity}")
+        logging.info(f"Generalization: {tree.generalization}")
+        logging.info(f"Fitness: {tree.fitness}")
     #     if tree.replay_fitness >= 0.16:
     #         to_save.append(tree)
     # with open('to_check.pkl', "wb") as pickle_file:
