@@ -103,6 +103,7 @@ def test_tree_creation():
     log = ImportData("Artificial - Small Process.xes")
     log.extract_traces_and_events()
     log.change_event_names()
+    # log.trace_list = [log.trace_list[-1]]
     logging.info(log.trace_list)
     logging.info(log.unique_events)
     population = InitialPopulation(log.unique_events, 100)
@@ -110,9 +111,10 @@ def test_tree_creation():
     trees = [create_tree(tree) for tree in population.trees]
     # with open('trees.pkl', "wb") as pickle_file:
     #     pickle.dump(trees, pickle_file)
-    # with open('to_check.pkl', "rb") as pickle_file:
-    #     trees = pickle.load(pickle_file)
+    with open('to_check.pkl', "rb") as pickle_file:
+        trees = pickle.load(pickle_file)
     # to_save = []
+
     for tree in trees:
         tree.count_fitness(log.trace_list)
         logging.info(tree)
