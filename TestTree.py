@@ -4,6 +4,7 @@ from pm4py.objects.process_tree.process_tree import ProcessTree
 import logging
 import math
 
+
 class Tree:
     def __init__(self, label: str, parent: "Tree", children: List["Tree"] = None):
         self.parent = parent
@@ -24,6 +25,17 @@ class Tree:
             return f"{self.label}({children})"
         else:
             return self.label
+
+    def __gt__(self, other):
+        return self.fitness > other.fitness
+
+    # def __eq__(self, other):
+    #     return self.label == other.label
+    #
+    # def __hash__(self):
+    #     to_hash = [child for child in self.children]
+    #     to_hash.append(self.label)
+    #     return hash(tuple(to_hash))
 
     def count_simplicity(self, unique_events):
         all_leaves = []
@@ -54,11 +66,11 @@ class Tree:
             if_match, visited_nodes, executions_list = compare_to_trace(self, trace)
             if if_match:
                 matches += 1
-                counter += ( len(all_leaves) - len(list(visited_nodes))) / len(all_leaves)
+                counter += (len(executions_list) * (len(all_leaves) - len(list(visited_nodes))) / len(all_leaves))
                 for item, count in collections.Counter([str(t) for t in executions_list]).items():
                     executions[item] += count
         self.replay_fitness = matches / len(trace_list)
-        self.precision = (1 - counter / denominator) if counter > 0 else 0
+        self.precision = (1 - (counter / denominator)) if counter > 0 else 0
         generalization_counter = 0
         for key in executions.keys():
             generalization_counter += pow(math.sqrt(executions[key]), -1) if executions[key] > 0 else 0
@@ -68,8 +80,6 @@ class Tree:
         all_leaves = self.count_simplicity(unique_events)
         self.count_replay_fitness_and_precision(trace_list, all_leaves)
         self.fitness = (replay_fitness_w * self.replay_fitness + simplicity_w * self.simplicity + precision_w * self.precision + generalization_w * self.generalization) / (replay_fitness_w + precision_w + simplicity_w + generalization_w)
-
-    # def count_precision(self, trace_list):
 
 
 def create_tree(process_tree: ProcessTree, parent=None):
@@ -87,10 +97,13 @@ def find_nodes(tree: Tree, tree_list):
         find_nodes(child_tree, tree_list)
 
 
+def find_operator_nodes(tree: Tree, operator_list):
+    if tree.children:
+        operator_list.append(tree)
+    for child_tree in tree.children:
+        find_operator_nodes(child_tree, operator_list)
 
 
-
-# τ
 def find_next_node(start_tree, i, trace):
     visited_nodes = list()
     error = False
@@ -269,17 +282,23 @@ def compare_to_trace(start_tree: Tree, trace: str):
 #         possible_char =
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(message)s', datefmt='%I:%M:%S', level=logging.INFO)
 
-sample_tree = Tree("O", None)
-sample_sub_tree = Tree("a", sample_tree)
-sample_sub_tree_2 = Tree("*", sample_tree)
-sample_tree.children.append(sample_sub_tree)
-sample_tree.children.append(sample_sub_tree_2)
-sample_sub_tree_2.children.append(Tree("b", sample_sub_tree_2))
-sample_sub_sub_tree = Tree("X", sample_sub_tree_2)
-sample_sub_tree_2.children.append(sample_sub_sub_tree)
-sample_sub_sub_tree.children.append(Tree("c", sample_sub_sub_tree))
-sample_sub_sub_tree.children.append(Tree("d", sample_sub_sub_tree))
-sample_sub_tree_2.children.append(Tree("e", sample_sub_tree_2))
+sample_tree = Tree("X", None)
+sample_tree.children.append(Tree("c", sample_tree))
+sample_tree.children.append(Tree("f", sample_tree))
+sample_tree.children.append(Tree("a", sample_tree))
+sample_tree.children.append(Tree("d", sample_tree))
+sample_tree.children.append(Tree("e", sample_tree))
+sample_tree.children.append(Tree("b", sample_tree))
+
+# sample_sub_tree_2 = Tree("*", sample_tree)
+# sample_tree.children.append(sample_sub_tree)
+# sample_tree.children.append(sample_sub_tree_2)
+# sample_sub_tree_2.children.append(Tree("b", sample_sub_tree_2))
+# sample_sub_sub_tree = Tree("X", sample_sub_tree_2)
+# sample_sub_tree_2.children.append(sample_sub_sub_tree)
+# sample_sub_sub_tree.children.append(Tree("c", sample_sub_sub_tree))
+# sample_sub_sub_tree.children.append(Tree("d", sample_sub_sub_tree))
+# sample_sub_tree_2.children.append(Tree("e", sample_sub_tree_2))
 
 print(sample_tree)
 
@@ -287,6 +306,8 @@ print(sample_tree)
 t = str(sample_tree)
 print("abcbdbe")
 print(compare_to_trace(sample_tree, "abcbcbe"))
+sample_tree.count_fitness(["a", "b", "c", "d", "e", "f"],  ['abdcf', 'acbdf', 'acdbf', 'adef', 'abcdf', 'aedf'], 1,1,1,1)
+print(f"Replay fitness {sample_tree.replay_fitness}")
 unique_events = {"a", "b", "c", "d", "e"}
 sample_tree.count_simplicity(unique_events)
 # tree_list = []

@@ -2,11 +2,11 @@ import logging
 from itertools import chain, permutations
 import pickle
 import utility
-import Tree
+# import Tree
 from Data import ImportData
 from InitialPopulation import InitialPopulation
 import datetime
-from TestTree import create_tree, compare_to_trace
+from TestTree import Tree, create_tree, compare_to_trace
 from pm4py.evaluation.replay_fitness import evaluator as replay_fitness
 logging.basicConfig(format='%(asctime)s %(levelname)s %(name)s %(message)s', datefmt='%I:%M:%S', level=logging.INFO)
 
@@ -44,61 +44,26 @@ def test():
         if trees[i].metrics['replay fitness'] != SAMPLES[sample]/6:
             logging.info(f"Invalid regex match for {trees[i]}, expected {SAMPLES[sample]}, got {trees[i].metrics['replay fitness']}")
 
+
 def start():
     log = ImportData("Artificial - Loan Process.xes")
     log.extract_traces_and_events()
     log.change_event_names()
     logging.info(log.trace_list)
     logging.info(log.unique_events)
-    population = InitialPopulation(log.unique_events, 20)
+    population = InitialPopulation(log.unique_events, 100)
     population.create_initial_population()
-    all_possible_traces = []
-    for n in range(1, len(log.unique_events) + 1):
-        all_possible_traces += ["".join(perm) for perm in permutations(log.unique_events, r=n)]
-    # all_possible_traces = ["".join(perm) for perm in permutations(log.unique_events)]
-    # print(all_possible_traces)
-    # print(len(all_possible_traces))
     tree_list = []
     for t in population.trees:
-        tree = Tree.Tree(t)
-        # tree.tree_model = "+('a','b','c')"
-        # tree.tree_model = "+(O('a','b'),'c')"
-        # tree.tree_model = "*(*('a','d','c'),'g','f')"
-
-
-        # tree.count_fitness(10, 5, 1, log.trace_list, log.unique_events, all_possible_traces)
+        tree = create_tree(t)
+        tree.count_fitness(log.unique_events, log.trace_list, 10, 5, 1, 0.1)
         tree_list.append(tree)
-    utility.flattening_tree(tree_list)
-    for tree in tree_list:
-        tree.count_fitness(10, 5, 1, log.trace_list, log.unique_events, all_possible_traces)
-        logging.info(tree.tree_regex)
-
-        # print(str(tree))
-        # reg = utility.create_tree_regex(str(tree))
-        # matches, quality_map[str(tree)] = utility.count_replay_fitness(reg, log.trace_list)
-        # precision = utility.count_precision(all_possible_traces, reg, matches)
-        # print(f"Precision: {precision}")
-        # print(utility.count_simplicity(str(tree), log.unique_events))
-
-    best_trees = utility.run(tree_list, log.unique_events, log.trace_list, all_possible_traces, 100, 0.8)
+    best_trees = utility.run(tree_list, log.unique_events, log.trace_list, 500, 0.8)
     for t in best_trees:
         print(
-            f"Tree: {t.tree_model} Replay fitness: {t.metrics['replay fitness']} Precision: {t.metrics['precision']} Simplicity: {t.metrics['simplicity']} Fitness: {t.fitness} Regex: {t.tree_regex}")
+            f"Tree: {t} Replay fitness: {t.replay_fitness} Precision: {t.precision} Simplicity: {t.simplicity} Fitness: {t.fitness}")
 
-    # logging.info([i.fitness for i in worst_list])
 
-    # for t in worst_list_after_change:
-    #     t.count_fitness(10, 5, 1, log.trace_list, log.unique_events, all_possible_traces)
-    # logging.info([i.fitness for i in worst_list_after_change])
-    #
-    #
-    #
-    # logging.info([i.fitness for i in worst_list_after_change])
-    # logging.info("Max: " + str(max([i.fitness for i in worst_list_after_change])))
-    # print({k: v for k, v in sorted(quality_map.items(), reverse=True, key=lambda item: item[1])})
-
-    # print(log.event_log[0])
-    # print(log.event_log[0][0]['concept:name'])
 def test_tree_creation():
     log = ImportData("Artificial - Small Process.xes")
     log.extract_traces_and_events()
@@ -116,23 +81,23 @@ def test_tree_creation():
     # to_save = []
 
     for tree in trees:
-        tree.count_fitness(log.unique_events, log.trace_list,10, 5,1,0.1)
-        logging.info(tree)
-        if tree.replay_fitness > 0:
-            logging.info("Jest!!!!!!!!!!!!!!!!!!!")
-        logging.info(f"Replay fitness: {tree.replay_fitness}")
-        logging.info(f"Precision: {tree.precision}")
-        logging.info(f"Simplicity: {tree.simplicity}")
-        logging.info(f"Generalization: {tree.generalization}")
-        logging.info(f"Fitness: {tree.fitness}")
+        tree.count_fitness(log.unique_events, log.trace_list, 10, 5, 1, 0.1)
+        # logging.info(tree)
+        # if tree.replay_fitness > 0:
+        #     logging.info("Jest!!!!!!!!!!!!!!!!!!!")
+        # logging.info(f"Replay fitness: {tree.replay_fitness}")
+        # logging.info(f"Precision: {tree.precision}")
+        # logging.info(f"Simplicity: {tree.simplicity}")
+        # logging.info(f"Generalization: {tree.generalization}")
+        # logging.info(f"Fitness: {tree.fitness}")
     #     if tree.replay_fitness >= 0.16:
     #         to_save.append(tree)
     # with open('to_check.pkl', "wb") as pickle_file:
     #     pickle.dump(to_save, pickle_file)
 
 if __name__ == "__main__":
-    # start()
+    start()
     # test()
-    test_tree_creation()
+    # test_tree_creation()
 
 

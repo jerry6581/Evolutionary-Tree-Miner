@@ -38,7 +38,7 @@ class ImportData:
             trace = ""
             for event_index, event in enumerate(case):
                 logging.info(f"Replace {event['concept:name']} into {self.event_map[event['concept:name']]}")
-                # event["concept:name"] = self.event_map[event["concept:name"]]
+                event["concept:name"] = self.event_map[event["concept:name"]]
                 trace += event["concept:name"]
             self.trace_list.append(trace)
 
