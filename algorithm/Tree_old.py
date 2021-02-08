@@ -1,12 +1,13 @@
-import re
 import collections
 import logging
-import regex
-import time
 import os
-import psutil
+import re
 import sys
+import time
 import traceback
+
+import psutil
+import regex
 
 PROCESS = psutil.Process(os.getpid())
 MEGA = 10 ** 6
@@ -85,7 +86,10 @@ class Tree:
                     reg = f"#{'@#'.join(nodes)}@"  # TODO zmien jak beda normalne dane
                 elif sign == "+":
                     per = [f"#{node}@" for node in nodes]
-                    per2 = ["#"+ re.sub(r"\?P<(gr.[0-9]*)>.*\1&", "?P=\g<1>", node) + "@" for node in nodes]
+                    per2 = [
+                        "#" + re.sub(r"\?P<(gr.[0-9]*)>.*\1&", "?P=\g<1>", node) + "@"
+                        for node in nodes
+                    ]
                     # logging.info([p.replace("#", "(").replace("@", ")") for p in per])
                     # logging.info([p.replace("#", "(").replace("@", ")") for p in per2])
                     name = f"gri{str(Tree.unique_number)}"
@@ -125,7 +129,10 @@ class Tree:
                     # logging.info(reg)
                 elif sign == "O":
                     per = [f"#{node}@" for node in nodes]
-                    per2 = ["#"+ re.sub(r"\?P<(gr.[0-9]*)>.*\1&", "?P=\g<1>", node) + "@" for node in nodes]
+                    per2 = [
+                        "#" + re.sub(r"\?P<(gr.[0-9]*)>.*\1&", "?P=\g<1>", node) + "@"
+                        for node in nodes
+                    ]
                     # logging.info([p.replace("#", "(").replace("@", ")") for p in per])
                     # logging.info([p.replace("#", "(").replace("@", ")") for p in per2])
                     name = f"gro{str(Tree.unique_number)}"
@@ -171,7 +178,12 @@ class Tree:
                 break
         # logging.info("Return" + f"^{tree_model.replace('#', '(').replace('@', ')')}$")
         tree_model = re.sub("gr.[0-9]*&", "", tree_model)
-        return "^({})$".format(tree_model.replace("#", "(").replace("@", ")").replace("&", "").replace("%", ","))
+        return "^({})$".format(
+            tree_model.replace("#", "(")
+            .replace("@", ")")
+            .replace("&", "")
+            .replace("%", ",")
+        )
 
     # def count_replay_fitness(self, traces):
     #     start= time.time()
@@ -198,7 +210,7 @@ class Tree:
     #     # precision  = 1 - (counter / all_visits)
     #     self.metrics["replay fitness"] = matches / len(traces)
 
-        # return matches, self.metrics["replay fitness"]
+    # return matches, self.metrics["replay fitness"]
 
     def count_simplicity(self, unique_events):
         # PYTANIE - czy root ma byc liczony jako node !!!!! I czy ta metoda liczenia simplicity jest OK
