@@ -32,6 +32,7 @@ class Tree:
     def __gt__(self, other):
         return self.fitness > other.fitness
 
+    # dodac moze jeszcze useless nodes? TODO i liczyc tau jako useless - czyli bez usuwania tau z all_leaves oraz petle gdzie sa tały
     def count_simplicity(self, unique_events):
         all_leaves = []
         find_nodes(self, all_leaves)
@@ -103,7 +104,7 @@ class Tree:
 
 def create_tree(process_tree: ProcessTree, parent=None):
     label = process_tree.label if process_tree.label else process_tree.operator.value
-    tree = Tree(label, parent, None)
+    tree = Tree(label.replace("->", "→"), parent, None)
     children = [
         create_tree(child_process_tree, tree)
         for child_process_tree in process_tree.children
@@ -217,6 +218,8 @@ def find_next_node(start_tree, i, trace):
                     child_match_len[child] = [i + 1, [child]]
             except IndexError:
                 pass
+            if child.label == "τ":
+                child_match_len[child] = [i, []]
         if child_match_len.keys():
             best_match = sorted(child_match_len.items(), key=lambda item: item[1][0])[
                 -1
@@ -235,59 +238,59 @@ def find_next_node(start_tree, i, trace):
             if len(trace) > i and redo.label == trace[i]:
                 i += 1
                 visited_nodes.append(redo)
-                start_tree, i, error, visited_child_nodes = find_next_node(
+                _, _i, error, visited_child_nodes = find_next_node(
                     start_tree, i, trace
                 )
                 if not error:
+                    i = _i
                     visited_nodes += visited_child_nodes
             elif redo.children and not find_next_node(redo, i, trace)[2]:
-                save_tree = start_tree
-                start_tree, i, error, visited_child_nodes = find_next_node(
+                _, _i, error, visited_child_nodes = find_next_node(
                     redo, i, trace
                 )
                 if not error:
+                    i = _i
                     visited_nodes += visited_child_nodes
-                    start_tree, i, error, visited_child_nodes = find_next_node(
-                        save_tree, i, trace
+                    _, _i, error, visited_child_nodes = find_next_node(
+                        start_tree, i, trace
                     )
                     if not error:
+                        i = _i
                         visited_nodes += visited_child_nodes
             elif len(trace) > i and exit_loop.label == trace[i]:
                 i += 1
                 visited_nodes.append(exit_loop)
             elif exit_loop.children:
-                _i = i
-                start_tree, i, error, visited_child_nodes = find_next_node(
+                _, _i, error, visited_child_nodes = find_next_node(
                     exit_loop, i, trace
                 )
-                if error:
+                if not error:
                     i = _i
-                else:
                     visited_nodes += visited_child_nodes
             else:
                 error = True
         elif do.children:
-            save_tree = start_tree
-            start_tree, i, error, visited_child_nodes = find_next_node(do, i, trace)
+            _, _i, error, visited_child_nodes = find_next_node(do, i, trace)
             if not error:
+                i = _i
                 visited_nodes += visited_child_nodes
                 if len(trace) > i and redo.label == trace[i]:
                     i += 1
                     visited_nodes.append(redo)
-                    start_tree, i, error, visited_child_nodes = find_next_node(
-                        save_tree, i, trace
+                    _, _i, error, visited_child_nodes = find_next_node(
+                        start_tree, i, trace
                     )
                     if not error:
+                        i = _i
                         visited_nodes += visited_child_nodes
                 elif redo.children and not find_next_node(redo, i, trace)[2]:
-                    save_tree = save_tree
-                    start_tree, i, error, visited_child_nodes = find_next_node(
+                    _, i, error, visited_child_nodes = find_next_node(
                         redo, i, trace
                     )
                     if not error:
                         visited_nodes += visited_child_nodes
-                        start_tree, i, error, visited_child_nodes = find_next_node(
-                            save_tree, i, trace
+                        _, i, error, visited_child_nodes = find_next_node(
+                            start_tree, i, trace
                         )
                         if not error:
                             visited_nodes += visited_child_nodes
@@ -295,13 +298,11 @@ def find_next_node(start_tree, i, trace):
                     i += 1
                     visited_nodes.append(exit_loop)
                 elif exit_loop.children:
-                    _i = i
-                    start_tree, i, error, visited_child_nodes = find_next_node(
+                    _, _i, error, visited_child_nodes = find_next_node(
                         exit_loop, i, trace
                     )
-                    if error:
+                    if not error:
                         i = _i
-                    else:
                         visited_nodes += visited_child_nodes
                 else:
                     error = True

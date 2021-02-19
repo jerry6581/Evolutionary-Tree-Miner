@@ -6,7 +6,14 @@ import bpmn_python.bpmn_diagram_rep as diagram
 import bpmn_python.bpmn_diagram_layouter as layouter
 import bpmn_python.bpmn_diagram_visualizer as visualizer
 from memory_profiler import profile
-from . import InitialPopulation, Tree, create_tree, find_nodes, find_operator_nodes, Config
+from . import (
+    InitialPopulation,
+    Tree,
+    create_tree,
+    find_nodes,
+    find_operator_nodes,
+    Config,
+)
 
 
 def flattening_tree(tree: Tree):
@@ -46,9 +53,9 @@ def get_all_nodes(tree: Tree, nodes_list):
     for child_tree in tree.children:
         get_all_nodes(child_tree, nodes_list)
 
-# TODO - dodac do crossoevra wybieranie drzew o lepszych metrykach
+
+# TODO - dodac do crossoevra wybieranie drzew o lepszych metrykach # czy krosowac poddrzewa czy tez liscie
 def crossover(worst_list, to_change_size):
-    # czy krosowac poddrzewa czy tez liscie TODO
     crossover_count = round(len(worst_list) * to_change_size)
     for _ in range(int(crossover_count / 2)):
         trees_to_swap = random.sample(worst_list, 2)
@@ -139,18 +146,17 @@ def mutation(worst_list: List[Tree], to_change_size, unique_events):
             operator_to_change = random.choice(operators)
             if len(operator_to_change.children) == 3:
                 operator_list.append("*")
+            if operator_to_change.label in operator_list:
+                operator_list.remove(operator_to_change.label)
             operator_to_change.label = random.choice(operator_list)
         elif operation == "Node swapping":
-            all_nodes = []
-            get_all_nodes(tree_to_mutate, all_nodes)
-            all_nodes = all_nodes[1:]
-            nodes_to_swap = random.sample(all_nodes, 2)
-            nodes_to_swap[0].parent.children[
-                nodes_to_swap[0].parent.children.index(nodes_to_swap[0])
-            ] = nodes_to_swap[1]
-            nodes_to_swap[1].parent.children[
-                nodes_to_swap[1].parent.children.index(nodes_to_swap[1])
-            ] = nodes_to_swap[0]
+            all_leaves = []
+            find_nodes(tree_to_mutate, all_leaves)
+            nodes_to_swap = random.sample(all_leaves, 2)
+            index_0 = nodes_to_swap[0].parent.children.index(nodes_to_swap[0])
+            index_1 = nodes_to_swap[1].parent.children.index(nodes_to_swap[1])
+            nodes_to_swap[0].parent.children[index_0] = nodes_to_swap[1]
+            nodes_to_swap[1].parent.children[index_1] = nodes_to_swap[0]
             tmp = nodes_to_swap[0].parent
             nodes_to_swap[0].parent = nodes_to_swap[1].parent
             nodes_to_swap[1].parent = tmp
@@ -168,24 +174,36 @@ def mutation(worst_list: List[Tree], to_change_size, unique_events):
 
 def fill_bpmn_model(tree: Tree, bpmn_graph, previous_id, process_id):
     if tree.label == "X":
-        [root, _] = bpmn_graph.add_exclusive_gateway_to_diagram(process_id, gateway_name=tree.label)
-        [root_end, _] = bpmn_graph.add_exclusive_gateway_to_diagram(process_id, gateway_name=tree.label)
+        [root, _] = bpmn_graph.add_exclusive_gateway_to_diagram(
+            process_id, gateway_name=tree.label
+        )
+        [root_end, _] = bpmn_graph.add_exclusive_gateway_to_diagram(
+            process_id, gateway_name=tree.label
+        )
         bpmn_graph.add_sequence_flow_to_diagram(process_id, previous_id, root, "s")
         for child in tree.children:
             task = fill_bpmn_model(child, bpmn_graph, root, process_id)
             bpmn_graph.add_sequence_flow_to_diagram(process_id, task, root_end, "s")
         return root_end
     elif tree.label == "O":
-        [root, _] = bpmn_graph.add_inclusive_gateway_to_diagram(process_id, gateway_name=tree.label)
-        [root_end, _] = bpmn_graph.add_inclusive_gateway_to_diagram(process_id, gateway_name=tree.label)
+        [root, _] = bpmn_graph.add_inclusive_gateway_to_diagram(
+            process_id, gateway_name=tree.label
+        )
+        [root_end, _] = bpmn_graph.add_inclusive_gateway_to_diagram(
+            process_id, gateway_name=tree.label
+        )
         bpmn_graph.add_sequence_flow_to_diagram(process_id, previous_id, root, "s")
         for child in tree.children:
             task = fill_bpmn_model(child, bpmn_graph, root, process_id)
             bpmn_graph.add_sequence_flow_to_diagram(process_id, task, root_end, "s")
         return root_end
     elif tree.label == "+":
-        [root, _] = bpmn_graph.add_parallel_gateway_to_diagram(process_id, gateway_name=tree.label)
-        [root_end, _] = bpmn_graph.add_parallel_gateway_to_diagram(process_id, gateway_name=tree.label)
+        [root, _] = bpmn_graph.add_parallel_gateway_to_diagram(
+            process_id, gateway_name=tree.label
+        )
+        [root_end, _] = bpmn_graph.add_parallel_gateway_to_diagram(
+            process_id, gateway_name=tree.label
+        )
         bpmn_graph.add_sequence_flow_to_diagram(process_id, previous_id, root, "s")
         for child in tree.children:
             task = fill_bpmn_model(child, bpmn_graph, root, process_id)
@@ -197,10 +215,16 @@ def fill_bpmn_model(tree: Tree, bpmn_graph, previous_id, process_id):
             previous_id = task
         return previous_id
     elif tree.label == "*":
-        [root, _] = bpmn_graph.add_exclusive_gateway_to_diagram(process_id, gateway_name="root")
-        bpmn_graph.add_sequence_flow_to_diagram(process_id, previous_id, root, "start_to_one")
+        [root, _] = bpmn_graph.add_exclusive_gateway_to_diagram(
+            process_id, gateway_name="root"
+        )
+        bpmn_graph.add_sequence_flow_to_diagram(
+            process_id, previous_id, root, "start_to_one"
+        )
         task = fill_bpmn_model(tree.children[0], bpmn_graph, root, process_id)
-        [root_end, _] = bpmn_graph.add_exclusive_gateway_to_diagram(process_id, gateway_name=tree.label)
+        [root_end, _] = bpmn_graph.add_exclusive_gateway_to_diagram(
+            process_id, gateway_name=tree.label
+        )
         bpmn_graph.add_sequence_flow_to_diagram(process_id, task, root_end, "s")
         task = fill_bpmn_model(tree.children[1], bpmn_graph, root_end, process_id)
         bpmn_graph.add_sequence_flow_to_diagram(process_id, task, root, "s")
@@ -216,7 +240,9 @@ def create_bpmn_model(best_tree: Tree):
     bpmn_graph = diagram.BpmnDiagramGraph()
     bpmn_graph.create_new_diagram_graph(diagram_name="Final model")
     process_id = bpmn_graph.add_process_to_diagram()
-    [start_id, _] = bpmn_graph.add_start_event_to_diagram(process_id, start_event_name="START")
+    [start_id, _] = bpmn_graph.add_start_event_to_diagram(
+        process_id, start_event_name="START"
+    )
     root_end = fill_bpmn_model(best_tree, bpmn_graph, start_id, process_id)
     [end_id, _] = bpmn_graph.add_end_event_to_diagram(process_id, end_event_name="END")
     bpmn_graph.add_sequence_flow_to_diagram(process_id, root_end, end_id, "s")
@@ -351,6 +377,7 @@ def create_test_tree():
 
     return s1
 
+
 # TODO dodac liczenie metryk po kazdej mutacji lub gdy drzewo wzielo udzial w mutacji to zeby nie bralo kolejny raz w danej generacji !!
 @profile()
 def run(tree_list, unique_events, trace_list, config_params: Config):
@@ -367,8 +394,12 @@ def run(tree_list, unique_events, trace_list, config_params: Config):
     for _ in range(config_params.number_of_generations):
 
         elite_list, worst_list = get_elite(tree_list, config_params.elite_size)
-        worst_list_after_change = random_creation(worst_list, config_params.trees_to_replace_size, unique_events)
-        mutation(worst_list_after_change, config_params.trees_to_mutate_size, unique_events)
+        worst_list_after_change = random_creation(
+            worst_list, config_params.trees_to_replace_size, unique_events
+        )
+        mutation(
+            worst_list_after_change, config_params.trees_to_mutate_size, unique_events
+        )
         crossover(worst_list_after_change, config_params.trees_to_cross_size)
         for t in worst_list_after_change:
             flattening_tree(t)
@@ -381,6 +412,3 @@ def run(tree_list, unique_events, trace_list, config_params: Config):
         tree_list = elite_list + worst_list_after_change
     # TODO zmienic zeby zwracalo tlyko elite
     return sorted(tree_list)[-15:]
-
-
-
