@@ -79,6 +79,22 @@ def start(config_params):
         )
 
 
+def test_loop(config):
+    unique_events = {"A", "B", "C", "D"}
+    traces = {"ABABAC": 1, "ABC": 1, "AC": 1, "DBABDC": 1, "ABADAC": 1, "AAC": 1, "ABAC": 1, "ABAD": 1, "BBBC": 1, "C": 1, "AAAA": 1, "ABAB": 1}
+    # traces = {"ABABAC": 1}
+    # traces = {"AAAA": 1}
+    # traces = { "AAC": 1}
+    trees = utility.create_test_tree()
+    for tree in trees:
+        t = tree[0]
+        res = tree[1]
+        t.count_fitness(unique_events, traces, config)
+        logging.info(
+            f"Tree: {t} Replay fitness: {t.replay_fitness} match: {t.replay_fitness == res / len(traces)}"
+        )
+
+
 def test_tree_creation():
     log = ImportData("event_logs/Artificial - Loan Process.xes")
     log.extract_events()
@@ -130,6 +146,7 @@ if __name__ == "__main__":
     parser = ArgumentParser(Config)
     config = parser.parse_args()
     print(config.initial_population_size)
+    # test_loop(config)
     start(config)
     # test()
     # test_tree_creation()

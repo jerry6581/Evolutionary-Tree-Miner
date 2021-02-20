@@ -255,6 +255,7 @@ def create_bpmn_model(best_tree: Tree):
 
 
 def create_test_tree():
+    trees = []
     # s1 = Tree("X", None)
     # s2 = Tree("X", s1)
     # s1.children.append(s2)
@@ -324,28 +325,28 @@ def create_test_tree():
     # s6.children.append(Tree("g", s6))
 
     # Fig 6
-    s1 = Tree("→", None)
-    s2 = Tree("→", s1)
-    s3 = Tree("→", s1)
-    s1.children.append(s2)
-    s1.children.append(s3)
-    s2.children.append(Tree("a", s2))
-    s4 = Tree("O", s2)
-    s2.children.append(s4)
-    s4.children.append(Tree("b", s4))
-    s5 = Tree("O", s4)
-    s4.children.append(s5)
-    s5.children.append(Tree("c", s5))
-    s7 = Tree("*", s5)
-    s5.children.append(s7)
-    s7.children.append(Tree("d", s7))
-    s7.children.append(Tree("d", s7))
-    s7.children.append(Tree("z", s7))
-    s6 = Tree("X", s3)
-    s3.children.append(s6)
-    s3.children.append(Tree("g", s3))
-    s6.children.append(Tree("e", s6))
-    s6.children.append(Tree("f", s6))
+    # s1 = Tree("→", None)
+    # s2 = Tree("→", s1)
+    # s3 = Tree("→", s1)
+    # s1.children.append(s2)
+    # s1.children.append(s3)
+    # s2.children.append(Tree("a", s2))
+    # s4 = Tree("O", s2)
+    # s2.children.append(s4)
+    # s4.children.append(Tree("b", s4))
+    # s5 = Tree("O", s4)
+    # s4.children.append(s5)
+    # s5.children.append(Tree("c", s5))
+    # s7 = Tree("*", s5)
+    # s5.children.append(s7)
+    # s7.children.append(Tree("d", s7))
+    # s7.children.append(Tree("d", s7))
+    # s7.children.append(Tree("z", s7))
+    # s6 = Tree("X", s3)
+    # s3.children.append(s6)
+    # s3.children.append(Tree("g", s3))
+    # s6.children.append(Tree("e", s6))
+    # s6.children.append(Tree("f", s6))
 
     # Fig 8
     # s1 = Tree("→", None)
@@ -375,11 +376,80 @@ def create_test_tree():
     # s9.children.append(Tree("f", s9))
     # s3.children.append(Tree("g", s3))
 
-    return s1
+    # Loop test
+    s1 = Tree("*", None)
+    s1.children.append(Tree("A", s1))
+    s1.children.append(Tree("B", s1))
+    s1.children.append(Tree("C", s1))
+    trees.append([s1, 3])
+
+    s1 = Tree("*", None)
+    s2 = Tree("O", s1)
+    s2.children.append(Tree("A", s2))
+    s2.children.append(Tree("D", s2))
+    s1.children.append(s2)
+    s1.children.append(Tree("B", s1))
+    s1.children.append(Tree("C", s1))
+    trees.append([s1, 4])
+
+    s1 = Tree("*", None)
+    s2 = Tree("O", s1)
+    s2.children.append(Tree("B", s2))
+    s2.children.append(Tree("D", s2))
+    s1.children.append(Tree("A", s1))
+    s1.children.append(s2)
+    s1.children.append(Tree("C", s1))
+    trees.append([s1, 4])
+
+    s1 = Tree("*", None)
+    s2 = Tree("O", s1)
+    s2.children.append(Tree("C", s2))
+    s2.children.append(Tree("D", s2))
+    s1.children.append(Tree("A", s1))
+    s1.children.append(Tree("B", s1))
+    s1.children.append(s2)
+
+    trees.append([s1, 4])
+
+    s1 = Tree("*", None)
+    s1.children.append(Tree("A", s1))
+    s1.children.append(Tree("τ", s1))
+    s1.children.append(Tree("C", s1))
+
+
+    trees.append([s1, 2])
+
+    s1 = Tree("*", None)
+    s2 = Tree("O", s1)
+    s2.children.append(Tree("B", s2))
+    s2.children.append(Tree("τ", s2))
+    s1.children.append(Tree("A", s1))
+    s1.children.append(s2)
+    s1.children.append(Tree("C", s1))
+
+
+    trees.append([s1, 4])
+
+    s1 = Tree("*", None)
+    s1.children.append(Tree("A", s1))
+    s1.children.append(Tree("B", s1))
+    s1.children.append(Tree("τ", s1))
+
+
+    trees.append([s1, 0])
+
+    s1 = Tree("*", None)
+    s1.children.append(Tree("τ", s1))
+    s1.children.append(Tree("B", s1))
+    s1.children.append(Tree("C", s1))
+
+
+    trees.append([s1, 0])
+
+    return trees
 
 
 # TODO dodac liczenie metryk po kazdej mutacji lub gdy drzewo wzielo udzial w mutacji to zeby nie bralo kolejny raz w danej generacji !!
-@profile()
 def run(tree_list, unique_events, trace_list, config_params: Config):
     trace_frequency = {
         item: count for item, count in collections.Counter(trace_list).items()
@@ -404,6 +474,7 @@ def run(tree_list, unique_events, trace_list, config_params: Config):
         for t in worst_list_after_change:
             flattening_tree(t)
             t.count_fitness(unique_events, trace_frequency, config_params)
+        logging.info(f"Stop condition {config_params.stop_condition_replay_fitness}  {_}")
         if max(tree_list).fitness > config_params.stop_condition_replay_fitness:
             logging.info(
                 f"Found tree with satisfying replay fitness!: {max(tree_list).fitness}"

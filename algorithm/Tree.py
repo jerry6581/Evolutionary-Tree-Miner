@@ -58,12 +58,15 @@ class Tree:
         matches = 0
         executions = {str(tree): 0 for tree in all_leaves}
         for trace, val in trace_frequency.items():
+            # logging.info(f"Before compare {self}")
             if_match, visited_nodes, executions_list = compare_to_trace(self, trace)
+            # logging.info(f"Tree {self}  if match: {if_match} to trace: {trace}")
             if if_match:
+
                 matches += val
-                logging.info(
-                    f"Trace: {trace}, execution list: {executions_list}, all leaves: {all_leaves}, visited nodes: {visited_nodes}, len of trace list: {denominator}"
-                )
+                # logging.info(
+                #     f"Trace: {trace}, execution list: {executions_list}, all leaves: {all_leaves}, visited nodes: {visited_nodes}, len of trace list: {denominator}"
+                # )
                 counter += (
                     (len(all_leaves) - len(list(visited_nodes))) / len(all_leaves) * val
                 )
@@ -199,6 +202,8 @@ def find_next_node(start_tree, i, trace):
                         visited_nodes.append(child)
                 except IndexError:
                     pass
+                if child.label == "τ":
+                    children.remove(child)
             if not children:
                 break
         if start_len == len(children):
@@ -235,82 +240,83 @@ def find_next_node(start_tree, i, trace):
         if len(trace) > i and do.label == trace[i]:
             i += 1
             visited_nodes.append(do)
-            if len(trace) > i and redo.label == trace[i]:
-                i += 1
-                visited_nodes.append(redo)
-                _, _i, error, visited_child_nodes = find_next_node(
-                    start_tree, i, trace
-                )
-                if not error:
-                    i = _i
-                    visited_nodes += visited_child_nodes
-            elif redo.children and not find_next_node(redo, i, trace)[2]:
-                _, _i, error, visited_child_nodes = find_next_node(
-                    redo, i, trace
-                )
-                if not error:
-                    i = _i
-                    visited_nodes += visited_child_nodes
-                    _, _i, error, visited_child_nodes = find_next_node(
-                        start_tree, i, trace
-                    )
-                    if not error:
-                        i = _i
-                        visited_nodes += visited_child_nodes
-            elif len(trace) > i and exit_loop.label == trace[i]:
+        elif do.children:
+            _, _i, error, visited_child_nodes = find_next_node(do, i, trace)
+            if error or i == _i:
+                return start_tree, i, error, visited_nodes
+            i = _i
+            visited_nodes += visited_child_nodes
+        else:
+            return start_tree, i, True, visited_nodes
+
+        i_before_redo = i
+        redo_error = False
+        if len(trace) > i and redo.label == trace[i]:
+            i += 1
+            visited_nodes.append(redo)
+        elif redo.children:
+            _, _i, error, visited_child_nodes = find_next_node(
+                redo, i, trace
+            )
+            if not error:
+                i = _i
+                visited_nodes += visited_child_nodes
+            else:
+                redo_error = True
+        elif redo.label != "τ":
+            redo_error = True
+        if i == i_before_redo:
+            error = True
+            if len(trace) <= i:
+                pass
+            elif exit_loop.label == trace[i]:
                 i += 1
                 visited_nodes.append(exit_loop)
+                error = False
             elif exit_loop.children:
                 _, _i, error, visited_child_nodes = find_next_node(
                     exit_loop, i, trace
                 )
+                if i == _i:
+                    return start_tree, i, True, visited_nodes
                 if not error:
                     i = _i
                     visited_nodes += visited_child_nodes
-            else:
-                error = True
-        elif do.children:
-            _, _i, error, visited_child_nodes = find_next_node(do, i, trace)
+            elif exit_loop.label == "τ":
+                return start_tree, i, True, visited_nodes
+            if not error:
+                return start_tree, i, error, visited_nodes
+            if redo_error:
+                return start_tree, i, redo_error, visited_nodes
+
+        if (error or i != i_before_redo) and not redo_error:
+            _, _i, error, visited_child_nodes = find_next_node(
+                start_tree, i, trace
+            )
             if not error:
                 i = _i
                 visited_nodes += visited_child_nodes
-                if len(trace) > i and redo.label == trace[i]:
-                    i += 1
-                    visited_nodes.append(redo)
-                    _, _i, error, visited_child_nodes = find_next_node(
-                        start_tree, i, trace
-                    )
-                    if not error:
-                        i = _i
-                        visited_nodes += visited_child_nodes
-                elif redo.children and not find_next_node(redo, i, trace)[2]:
-                    _, i, error, visited_child_nodes = find_next_node(
-                        redo, i, trace
-                    )
-                    if not error:
-                        visited_nodes += visited_child_nodes
-                        _, i, error, visited_child_nodes = find_next_node(
-                            start_tree, i, trace
-                        )
-                        if not error:
-                            visited_nodes += visited_child_nodes
-                elif len(trace) > i and exit_loop.label == trace[i]:
-                    i += 1
-                    visited_nodes.append(exit_loop)
-                elif exit_loop.children:
-                    _, _i, error, visited_child_nodes = find_next_node(
-                        exit_loop, i, trace
-                    )
-                    if not error:
-                        i = _i
-                        visited_nodes += visited_child_nodes
-                else:
-                    error = True
-        else:
-            error = True
+    # else:
+    #     error = True
 
     return start_tree, i, error, visited_nodes
 
+
+def check_exit_loop(trace, i, exit_loop, visited_nodes):
+    error = False
+    if len(trace) > i and exit_loop.label == trace[i]:
+        i += 1
+        visited_nodes.append(exit_loop)
+    elif exit_loop.children:
+        _, _i, error, visited_child_nodes = find_next_node(
+            exit_loop, i, trace
+        )
+        if not error:
+            i = _i
+            visited_nodes += visited_child_nodes
+    else:
+        error = True
+    return exit_loop, i, error, visited_nodes
 
 def compare_to_trace(start_tree: Tree, trace: str):
     start_tree, i, error, visited_nodes = find_next_node(start_tree, 0, trace)
