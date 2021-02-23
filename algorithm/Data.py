@@ -1,13 +1,12 @@
 import logging
-import string
 import os
+import string
 
 import pandas as pd
 import pm4py
 
 
 class ImportData:
-
     def __init__(self, path):
         self.logger = logging.getLogger(__name__)
         _, self.file_extension = os.path.splitext(path)
@@ -21,17 +20,20 @@ class ImportData:
             self.logger.error("Wrong file format! Please pass correct one.")
             exit(1)
         # set of unique events existing in event log
-        self.unique_events = set()
+        self.unique_events = []
         # list of traces existing in event log
         self.trace_list = []
         # map of letters and corresponding event names
         self.event_map = {}
+        self.extract_events()
+        self.create_trace_list()
 
     def extract_events(self):
         if self.file_extension == ".xes":
             for case_index, case in enumerate(self.event_log):
                 for event_index, event in enumerate(case):
-                    self.unique_events.add(event["concept:name"])
+                    if not event["concept:name"] in self.unique_events:
+                        self.unique_events.append(event["concept:name"])
         elif self.file_extension == ".csv":
             self.unique_events = self.input_data["event"].unique()
 
@@ -53,6 +55,7 @@ class ImportData:
                 self.input_data.event.replace(key, value, inplace=True)
             groupbyid_input_data = self.input_data.groupby(["case"]).sum()
             self.trace_list = list(groupbyid_input_data["event"])
+
 
 if __name__ == "__main__":
     # import_data_csv = ImportData("event_logs/Artificial - Loan Process.csv")

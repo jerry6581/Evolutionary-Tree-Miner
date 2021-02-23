@@ -52,21 +52,32 @@ class Tree:
         self.simplicity = 1 - counter / denominator
         return all_leaves, unique_events_in_tree
 
-    def count_replay_fitness_precision_generalization(self, trace_frequency, all_leaves):
+    def count_precision(self, unique_events, traces_options):
+        escaping_edges = {}
+        for partial_trace, options in traces_options.items():
+            possible_partial_trace = [
+                partial_trace + activity
+                for activity in list(unique_events)
+                if activity not in traces_options[partial_trace]
+            ]
+            for sub_trace in possible_partial_trace:
+                match_mask = [False for _ in list(unique_events)]
+                check_next_node(self, 0, sub_trace, match_mask)
+                if len(sub_trace) == sum(match_mask):
+                    escaping_edges.setdefault(partial_trace, set()).add(sub_trace[-1])
+        self.precision = 1 - (
+            len(escaping_edges.values()) / (len(traces_options.values()) + len(escaping_edges.values()))
+        )
+
+    def count_replay_fitness_and_generalization(self, trace_frequency, all_leaves):
         denominator = sum(trace_frequency.values())
         counter = 0
         matches = 0
         executions = {str(tree): 0 for tree in all_leaves}
         for trace, val in trace_frequency.items():
-            # logging.info(f"Before compare {self}")
             if_match, visited_nodes, executions_list = compare_to_trace(self, trace)
-            # logging.info(f"Tree {self}  if match: {if_match} to trace: {trace}")
             if if_match:
-
                 matches += val
-                # logging.info(
-                #     f"Trace: {trace}, execution list: {executions_list}, all leaves: {all_leaves}, visited nodes: {visited_nodes}, len of trace list: {denominator}"
-                # )
                 counter += (
                     (len(all_leaves) - len(list(visited_nodes))) / len(all_leaves) * val
                 )
@@ -76,9 +87,7 @@ class Tree:
                     executions[item] += count * val
 
         self.replay_fitness = matches / denominator
-        self.precision = (1 - (counter / denominator)) if counter > 0 else 0
         generalization_counter = 0
-        # logging.error(f"Execution list: {executions}")
         for key in executions.keys():
             generalization_counter += (
                 pow(math.sqrt(executions[key]), -1) if executions[key] > 0 else 0
@@ -90,30 +99,22 @@ class Tree:
         )
 
     def count_fitness(
-        self,
-        unique_events,
-        trace_frequency,
-        config_params: Config,
+        self, unique_events, trace_frequency, config_params: Config, traces_options
     ):
         all_leaves, unique_events_in_tree = self.count_simplicity(unique_events)
-        self.count_replay_fitness_precision_generalization(trace_frequency, all_leaves)
+        self.count_replay_fitness_and_generalization(trace_frequency, all_leaves)
+        self.count_precision(unique_events, traces_options)
         self.fitness = (
             config_params.replay_fitness_weight * self.replay_fitness
             + config_params.simplicity_weight * self.simplicity
             + config_params.precision_weight * self.precision
             + config_params.generalization_weight * self.generalization
-        ) / (config_params.replay_fitness_weight + config_params.precision_weight + config_params.simplicity_weight + config_params.generalization_weight)
-
-
-def create_tree(process_tree: ProcessTree, parent=None):
-    label = process_tree.label if process_tree.label else process_tree.operator.value
-    tree = Tree(label.replace("->", "→"), parent, None)
-    children = [
-        create_tree(child_process_tree, tree)
-        for child_process_tree in process_tree.children
-    ]
-    tree.children = children
-    return tree
+        ) / (
+            config_params.replay_fitness_weight
+            + config_params.precision_weight
+            + config_params.simplicity_weight
+            + config_params.generalization_weight
+        )
 
 
 def find_nodes(tree: Tree, tree_list):
@@ -130,7 +131,15 @@ def find_operator_nodes(tree: Tree, operator_list):
         find_operator_nodes(child_tree, operator_list)
 
 
-def find_next_node(start_tree, i, trace):
+def update_mask(i, match_mask):
+    for i in range(i):
+        try:
+            match_mask[i] = True
+        except Exception:
+            break
+
+
+def check_next_node(start_tree, i, trace, match_mask):
     visited_nodes = list()
     error = False
     if start_tree.label == "+":
@@ -138,18 +147,19 @@ def find_next_node(start_tree, i, trace):
         for _ in range(len(children)):
             for child in children:
                 if child.children:
-                    # _i = i
-                    start_tree, _i, error, visited_child_nodes = find_next_node(
-                        child, i, trace
+                    _, _i, error, visited_child_nodes = check_next_node(
+                        child, i, trace, match_mask
                     )
                     if not error:
                         children.remove(child)
                         visited_nodes += visited_child_nodes
                         i = _i
+                        update_mask(i, match_mask)
                 try:
                     if child.label == trace[i]:
                         children.remove(child)
                         i += 1
+                        update_mask(i, match_mask)
                         visited_nodes.append(child)
                 except IndexError:
                     logging.debug("Trace is too short to validate against this tree.")
@@ -162,11 +172,12 @@ def find_next_node(start_tree, i, trace):
     elif start_tree.label == "→":
         for child in start_tree.children:
             if child.children:
-                start_tree, i, error, visited_child_nodes = find_next_node(
-                    child, i, trace
+                _, i, error, visited_child_nodes = check_next_node(
+                    child, i, trace, match_mask
                 )
                 if not error:
                     visited_nodes += visited_child_nodes
+                    update_mask(i, match_mask)
                     continue
                 else:
                     error = True
@@ -174,6 +185,7 @@ def find_next_node(start_tree, i, trace):
 
             if len(trace) > i and child.label == trace[i]:
                 i += 1
+                update_mask(i, match_mask)
                 visited_nodes.append(child)
             elif child.label == "τ":
                 pass
@@ -186,19 +198,19 @@ def find_next_node(start_tree, i, trace):
         for _ in range(len(children)):
             for child in children:
                 if child.children:
-                    _i = i
-                    start_tree, i, error, visited_child_nodes = find_next_node(
-                        child, i, trace
+                    _, _i, _error, visited_child_nodes = check_next_node(
+                        child, i, trace, match_mask
                     )
-                    if not error:
+                    if not _error:
                         children.remove(child)
                         visited_nodes += visited_child_nodes
-                    else:
-                        i = _i  # bo jak find_next_node zwroci blad to sie chcemy sie przesuwac w trace wiec wracamy
+                        i = _i
+                        update_mask(i, match_mask)
                 try:
                     if child.label == trace[i]:
                         children.remove(child)
                         i += 1
+                        update_mask(i, match_mask)
                         visited_nodes.append(child)
                 except IndexError:
                     pass
@@ -213,8 +225,8 @@ def find_next_node(start_tree, i, trace):
         child_match_len = {}
         for child in children:
             if child.children:
-                start_tree, _i, _error, visited_child_nodes = find_next_node(
-                    child, i, trace
+                _, _i, _error, visited_child_nodes = check_next_node(
+                    child, i, trace, match_mask
                 )
                 if not error:
                     child_match_len[child] = [_i, visited_child_nodes]
@@ -231,6 +243,7 @@ def find_next_node(start_tree, i, trace):
             ]
             i = best_match[1][0]
             visited_nodes += best_match[1][1]
+            update_mask(i, match_mask)
         else:
             error = True
     elif start_tree.label == "*":
@@ -239,12 +252,16 @@ def find_next_node(start_tree, i, trace):
         exit_loop = start_tree.children[2]
         if len(trace) > i and do.label == trace[i]:
             i += 1
+            update_mask(i, match_mask)
             visited_nodes.append(do)
         elif do.children:
-            _, _i, error, visited_child_nodes = find_next_node(do, i, trace)
+            _, _i, error, visited_child_nodes = check_next_node(
+                do, i, trace, match_mask
+            )
             if error or i == _i:
                 return start_tree, i, error, visited_nodes
             i = _i
+            update_mask(i, match_mask)
             visited_nodes += visited_child_nodes
         else:
             return start_tree, i, True, visited_nodes
@@ -253,13 +270,15 @@ def find_next_node(start_tree, i, trace):
         redo_error = False
         if len(trace) > i and redo.label == trace[i]:
             i += 1
+            update_mask(i, match_mask)
             visited_nodes.append(redo)
         elif redo.children:
-            _, _i, error, visited_child_nodes = find_next_node(
-                redo, i, trace
+            _, _i, error, visited_child_nodes = check_next_node(
+                redo, i, trace, match_mask
             )
             if not error:
                 i = _i
+                update_mask(i, match_mask)
                 visited_nodes += visited_child_nodes
             else:
                 redo_error = True
@@ -271,16 +290,18 @@ def find_next_node(start_tree, i, trace):
                 pass
             elif exit_loop.label == trace[i]:
                 i += 1
+                update_mask(i, match_mask)
                 visited_nodes.append(exit_loop)
                 error = False
             elif exit_loop.children:
-                _, _i, error, visited_child_nodes = find_next_node(
-                    exit_loop, i, trace
+                _, _i, error, visited_child_nodes = check_next_node(
+                    exit_loop, i, trace, match_mask
                 )
                 if i == _i:
                     return start_tree, i, True, visited_nodes
                 if not error:
                     i = _i
+                    update_mask(i, match_mask)
                     visited_nodes += visited_child_nodes
             elif exit_loop.label == "τ":
                 return start_tree, i, True, visited_nodes
@@ -290,11 +311,12 @@ def find_next_node(start_tree, i, trace):
                 return start_tree, i, redo_error, visited_nodes
 
         if (error or i != i_before_redo) and not redo_error:
-            _, _i, error, visited_child_nodes = find_next_node(
-                start_tree, i, trace
+            _, _i, error, visited_child_nodes = check_next_node(
+                start_tree, i, trace, match_mask
             )
             if not error:
                 i = _i
+                update_mask(i, match_mask)
                 visited_nodes += visited_child_nodes
     # else:
     #     error = True
@@ -302,28 +324,10 @@ def find_next_node(start_tree, i, trace):
     return start_tree, i, error, visited_nodes
 
 
-def check_exit_loop(trace, i, exit_loop, visited_nodes):
-    error = False
-    if len(trace) > i and exit_loop.label == trace[i]:
-        i += 1
-        visited_nodes.append(exit_loop)
-    elif exit_loop.children:
-        _, _i, error, visited_child_nodes = find_next_node(
-            exit_loop, i, trace
-        )
-        if not error:
-            i = _i
-            visited_nodes += visited_child_nodes
-    else:
-        error = True
-    return exit_loop, i, error, visited_nodes
-
 def compare_to_trace(start_tree: Tree, trace: str):
-    start_tree, i, error, visited_nodes = find_next_node(start_tree, 0, trace)
+    start_tree, i, error, visited_nodes = check_next_node(start_tree, 0, trace, None)
     if i != len(trace):
         error = True
     visited_nodes = visited_nodes if not error else set()
     visited_nodes_set = set(visited_nodes)
-    if not error:
-        logging.info(visited_nodes_set)
     return not error, visited_nodes_set, visited_nodes
