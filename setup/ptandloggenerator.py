@@ -1,14 +1,13 @@
-import itertools
-import math
-import random
-import string
-from bisect import bisect as _bisect
-from enum import Enum
-from itertools import accumulate as _accumulate
-from itertools import repeat as _repeat
-
-from pm4py.objects.process_tree import process_tree, pt_operator
+from pm4py.objects.process_tree import process_tree
+from pm4py.objects.process_tree import pt_operator
 from scipy.stats import triang as triangular
+import string
+import math
+import itertools
+from enum import Enum
+from itertools import accumulate as _accumulate, repeat as _repeat
+from bisect import bisect as _bisect
+import random
 
 
 def choices(population, weights=None, *, cum_weights=None, k=1):
@@ -20,20 +19,18 @@ def choices(population, weights=None, *, cum_weights=None, k=1):
     if cum_weights is None:
         if weights is None:
             _int = int
-            n += 0.0  # convert to float for a small speed improvement
+            n += 0.0    # convert to float for a small speed improvement
             return [population[_int(random.random() * n)] for i in _repeat(None, k)]
         cum_weights = list(_accumulate(weights))
     elif weights is not None:
-        raise TypeError("Cannot specify both weights and cumulative weights")
+        raise TypeError('Cannot specify both weights and cumulative weights')
     if len(cum_weights) != n:
-        raise ValueError("The number of weights does not match the population")
+        raise ValueError('The number of weights does not match the population')
     bisect = _bisect
-    total = cum_weights[-1] + 0.0  # convert to float
+    total = cum_weights[-1] + 0.0   # convert to float
     hi = n - 1
-    return [
-        population[bisect(cum_weights, random.random() * total, 0, hi)]
-        for i in _repeat(None, k)
-    ]
+    return [population[bisect(cum_weights, random.random() * total, 0, hi)]
+            for i in _repeat(None, k)]
 
 
 class Parameters(Enum):
@@ -117,7 +114,6 @@ def apply(parameters=None):
 
     return GeneratedTree(parameters).generate()
 
-
 def assign_operator(operator):
     if operator == "choice":
         return pt_operator.Operator.XOR
@@ -155,16 +151,9 @@ class GeneratedTree(object):
     def select_operator(self):
         # add root operator, if probabilities are high enough
         # ordering of operator computation is sequence, choice, parallel, loop, or
-        operator = choices(
-            ["sequence", "choice", "parallel", "loop", "or"],
-            [
-                self.parameters["sequence"],
-                self.parameters["choice"],
-                self.parameters["parallel"],
-                self.parameters["loop"],
-                self.parameters["or"],
-            ],
-        )
+        operator = choices(["sequence", "choice", "parallel", "loop", "or"],
+                                  [self.parameters["sequence"], self.parameters["choice"], self.parameters["parallel"],
+                                   self.parameters["loop"], self.parameters["or"]])
         return operator[0]
 
     def get_next_activity(self, activity):
@@ -247,12 +236,12 @@ class GeneratedTree(object):
         """
         # Need to select random node that is not a silent activity
         leaf_silent = True
-        while leaf_silent:
+        while (leaf_silent):
             leaf = random.choice(self.tree._get_leaves())
             if leaf.label is not None:
                 leaf_silent = False
         operator_nok = True
-        while operator_nok:
+        while (operator_nok):
             operator = self.select_operator()
             if self.total_activities > 1:
                 operator_nok = False
@@ -373,25 +362,12 @@ class GeneratedTree(object):
     def create_process_tree(self):
         self.tree = process_tree.ProcessTree()
         self.set_activity_labels = [item for item in self.alphabet]
-        # # p = 1
-        # # create labels
-        # for item in l:
-        #     label = ""
-        #     for element in item:
-        #         label += str(element)
-        #     self.set_activity_labels.append(label)
-        while self.total_activities + 2 > len(self.set_activity_labels):
-            # pairwise product
-            # l = itertools.product(self.alphabet, repeat=p)
-
-            # p += 1
+        while (self.total_activities + 2 > len(self.set_activity_labels)):
             self.set_activity_labels.append("τ")
-        # print(self.set_activity_labels)
         step = 1
         activity = self.assign_root_opeartor()
         step += 1
-
-        while self.total_activities > 0:
+        while (self.total_activities > 0):
             activity = self.add_node(activity)
             step += 1
 
@@ -401,21 +377,10 @@ class GeneratedTree(object):
             p = param if type(param) is str else param.value
             self.parameters[p] = parameters[param]
         # rescale probabilities of operators if the sum is not equal to one
-        if (
-            self.parameters["sequence"]
-            + self.parameters["choice"]
-            + self.parameters["parallel"]
-            + self.parameters["loop"]
-            + self.parameters["or"]
-            != 1
-        ):
-            sum_of_operators = (
-                self.parameters["sequence"]
-                + self.parameters["choice"]
-                + self.parameters["parallel"]
-                + self.parameters["loop"]
-                + self.parameters["or"]
-            )
+        if self.parameters["sequence"] + self.parameters["choice"] + self.parameters["parallel"] + self.parameters[
+            "loop"] + self.parameters["or"] != 1:
+            sum_of_operators = self.parameters["sequence"] + self.parameters["choice"] + self.parameters["parallel"] + \
+                               self.parameters["loop"] + self.parameters["or"]
             self.parameters["sequence"] = self.parameters["sequence"] / sum_of_operators
             self.parameters["choice"] = self.parameters["choice"] / sum_of_operators
             self.parameters["parallel"] = self.parameters["parallel"] / sum_of_operators
@@ -423,13 +388,12 @@ class GeneratedTree(object):
             self.parameters["loop"] = self.parameters["loop"] / sum_of_operators
         # First step: Compute acivity distribution
         # Since mode, min and max are given, the triangle distribution is chosen
-        self.activity_distribution = self.calculate_activity_distribution(
-            self.parameters["mode"], self.parameters["min"], self.parameters["max"]
-        )
+        self.activity_distribution = self.calculate_activity_distribution(self.parameters["mode"],
+                                                                          self.parameters["min"],
+                                                                          self.parameters["max"])
         # Number of total activities represented in the tree. Also, tau is counted as an activity.
-        self.total_activities = int(
-            math.ceil(self.draw_random_number_from_distribution())
-        )
+        self.total_activities = int(math.ceil(self.draw_random_number_from_distribution()))
+
 
     def generate(self):
         # Create a process tree based on the given probabilities

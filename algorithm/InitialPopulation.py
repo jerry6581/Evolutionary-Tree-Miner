@@ -1,5 +1,3 @@
-import logging
-
 from pm4py.simulation.tree_generator import simulator as tree_gen
 from pm4py.simulation.tree_generator.variants.ptandloggenerator import \
     GeneratedTree
@@ -34,7 +32,7 @@ class InitialPopulation:
 
 def create_tree(process_tree, parent=None):
     label = process_tree.label if process_tree.label else process_tree.operator.value
-    tree = Tree(label.replace("->", "→"), parent, None)
+    tree = Tree(label.replace("->", "→").replace("O", "v").replace("+", "∧"), parent, None)
     children = [
         create_tree(child_process_tree, tree)
         for child_process_tree in process_tree.children
