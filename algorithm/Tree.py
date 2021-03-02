@@ -1,9 +1,7 @@
 import collections
 import logging
 import math
-from typing import Any, List
-
-from pm4py.objects.process_tree.process_tree import ProcessTree
+from typing import List
 
 from . import Config
 
@@ -32,7 +30,6 @@ class Tree:
     def __gt__(self, other):
         return self.fitness > other.fitness
 
-    # dodac moze jeszcze useless nodes? TODO i liczyc tau jako useless - czyli bez usuwania tau z all_leaves oraz petle gdzie sa tały
     def count_simplicity(self, unique_events):
         all_leaves = []
         find_nodes(self, all_leaves)
@@ -65,9 +62,13 @@ class Tree:
                 check_next_node(self, 0, sub_trace, match_mask)
                 if len(sub_trace) == sum(match_mask):
                     escaping_edges.setdefault(partial_trace, set()).add(sub_trace[-1])
-        self.precision = 1 - (
-            len(escaping_edges.values()) / (len(traces_options.values()) + len(escaping_edges.values()))
-        )
+        escaping_edges_count = sum([len(_) for _ in escaping_edges.values()])
+        if escaping_edges_count:
+            self.precision = 1 - (
+                escaping_edges_count / (sum([len(_) for _ in traces_options.values()]) + sum([len(_) for _ in escaping_edges.values()]))
+            )
+        else:
+            self.precision = 0
 
     def count_replay_fitness_and_generalization(self, trace_frequency, all_leaves):
         denominator = sum(trace_frequency.values())
@@ -142,7 +143,7 @@ def update_mask(i, match_mask):
 def check_next_node(start_tree, i, trace, match_mask):
     visited_nodes = list()
     error = False
-    if start_tree.label == "+":
+    if start_tree.label == "∧":
         children = list(start_tree.children)
         for _ in range(len(children)):
             for child in children:
@@ -192,7 +193,7 @@ def check_next_node(start_tree, i, trace, match_mask):
             else:
                 error = True
                 break
-    elif start_tree.label == "O":
+    elif start_tree.label == "v":
         children = list(start_tree.children)
         start_len = len(children)
         for _ in range(len(children)):
@@ -318,8 +319,6 @@ def check_next_node(start_tree, i, trace, match_mask):
                 i = _i
                 update_mask(i, match_mask)
                 visited_nodes += visited_child_nodes
-    # else:
-    #     error = True
 
     return start_tree, i, error, visited_nodes
 

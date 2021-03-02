@@ -56,18 +56,3 @@ class ImportData:
             groupbyid_input_data = self.input_data.groupby(["case"]).sum()
             self.trace_list = list(groupbyid_input_data["event"])
 
-
-if __name__ == "__main__":
-    # import_data_csv = ImportData("event_logs/Artificial - Loan Process.csv")
-    import_data_csv = ImportData("requirements.txt")
-    # import_data_xes = ImportData("event_logs/Artificial - Loan Process.xes")
-    # import_data_csv.extract_events()
-    # import_data_csv.create_trace_list()
-    # import_data_xes.extract_events()
-    # import_data_xes.create_trace_list()
-    # print(import_data_csv.event_map)
-    # print(import_data_csv.unique_events)
-    # print(import_data_csv.trace_list)
-    # print(import_data_xes.event_map)
-    # print(import_data_xes.unique_events)
-    # print(import_data_xes.trace_list)

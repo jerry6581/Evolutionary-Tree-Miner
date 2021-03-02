@@ -1,15 +1,18 @@
 import collections
 import logging
+import os
 import random
 from typing import List
-import time
+
 import bpmn_python.bpmn_diagram_layouter as layouter
 import bpmn_python.bpmn_diagram_rep as diagram
 import bpmn_python.bpmn_diagram_visualizer as visualizer
-from memory_profiler import profile
+import matplotlib.pyplot as plt
+import pandas
 
-from . import (Config, InitialPopulation, Tree, find_nodes,
-               find_operator_nodes)
+from Main import FILE_NAME
+
+from . import Config, InitialPopulation, Tree, find_nodes, find_operator_nodes
 
 
 def flattening_tree(tree: Tree):
@@ -41,13 +44,11 @@ def random_creation(worst_list, to_change_size, unique_events):
 
 
 def get_all_nodes(tree: Tree, nodes_list):
-    # cale drzewo tez sie tutaj doda, bedzie trzeba usunac do crossovera
     nodes_list.append(tree)
     for child_tree in tree.children:
         get_all_nodes(child_tree, nodes_list)
 
 
-# TODO - dodac do crossoevra wybieranie drzew o lepszych metrykach # czy krosowac poddrzewa czy tez liscie
 def crossover(worst_list, to_change_size):
     crossover_count = round(len(worst_list) * to_change_size)
     for _ in range(int(crossover_count / 2)):
@@ -114,7 +115,6 @@ def mutation(worst_list: List[Tree], to_change_size, unique_events):
                 duplicated_leaves[random_key].remove(random_duplicated_leaf)
                 if len(duplicated_leaves[random_key]) == 1:
                     duplicated_leaves.pop(random_key, None)
-            # TODO pomyslec co ewentualnie mozna tu dodac, narazie jak sa duplikaty i brakujace to zamienia duplikat na missing
         elif operation == "Node addition":
             leaves = []
             find_nodes(tree_to_mutate, leaves)
@@ -134,7 +134,7 @@ def mutation(worst_list: List[Tree], to_change_size, unique_events):
                     )
         elif operation == "Operator changing":
             operators = []
-            operator_list = ["O", "X", "+", "→"]
+            operator_list = ["v", "X", "∧", "→"]
             find_operator_nodes(tree_to_mutate, operators)
             operator_to_change = random.choice(operators)
             if len(operator_to_change.children) == 3:
@@ -178,7 +178,7 @@ def fill_bpmn_model(tree: Tree, bpmn_graph, previous_id, process_id):
             task = fill_bpmn_model(child, bpmn_graph, root, process_id)
             bpmn_graph.add_sequence_flow_to_diagram(process_id, task, root_end, "s")
         return root_end
-    elif tree.label == "O":
+    elif tree.label == "v":
         [root, _] = bpmn_graph.add_inclusive_gateway_to_diagram(
             process_id, gateway_name=tree.label
         )
@@ -190,7 +190,7 @@ def fill_bpmn_model(tree: Tree, bpmn_graph, previous_id, process_id):
             task = fill_bpmn_model(child, bpmn_graph, root, process_id)
             bpmn_graph.add_sequence_flow_to_diagram(process_id, task, root_end, "s")
         return root_end
-    elif tree.label == "+":
+    elif tree.label == "∧":
         [root, _] = bpmn_graph.add_parallel_gateway_to_diagram(
             process_id, gateway_name=tree.label
         )
@@ -229,7 +229,7 @@ def fill_bpmn_model(tree: Tree, bpmn_graph, previous_id, process_id):
         return task
 
 
-def create_bpmn_model(best_tree: Tree, time_now):
+def create_bpmn_model(best_tree: Tree):
     bpmn_graph = diagram.BpmnDiagramGraph()
     bpmn_graph.create_new_diagram_graph(diagram_name="Final model")
     process_id = bpmn_graph.add_process_to_diagram()
@@ -241,208 +241,21 @@ def create_bpmn_model(best_tree: Tree, time_now):
     bpmn_graph.add_sequence_flow_to_diagram(process_id, root_end, end_id, "s")
     layouter.generate_layout(bpmn_graph)
     visualizer.visualize_diagram(bpmn_graph)
-    bpmn_graph.export_xml_file("./", f"{time_now}-final_model.bpmn")
-
-    # visualizer.bpmn_diagram_to_png(bpmn_graph, "diagram")
-    # visualizer.bpmn_diagram_to_dot_file(bpmn_graph, "diagram")
+    bpmn_graph.export_xml_file("./", os.path.join("models", f"{FILE_NAME}-final_model.bpmn"))
 
 
-def create_test_tree():
-    trees = []
-    # s1 = Tree("X", None)
-    # s2 = Tree("X", s1)
-    # s1.children.append(s2)
-    # s1.children.append(Tree("b", s1))
-    # s2.children.append(Tree("c", s2))
-    # s2.children.append(Tree("d", s2))
-    # Fig 9
-    s1 = Tree("→", None)
-    s2 = Tree("→", s1)
-    s3 = Tree("→", s1)
-    s1.children.append(s2)
-    s1.children.append(s3)
-    s2.children.append(Tree("a", s2))
-    s4 = Tree("O", s2)
-    s2.children.append(s4)
-    s4.children.append(Tree("b", s4))
-    s5 = Tree("O", s4)
-    s4.children.append(s5)
-    s5.children.append(Tree("c", s5))
-    s5.children.append(Tree("d", s5))
-    s6 = Tree("X", s3)
-    s3.children.append(s6)
-    s3.children.append(Tree("g", s3))
-    s6.children.append(Tree("e", s6))
-    s6.children.append(Tree("f", s6))
-    trees.append(s1)
-    # Fig 5
-    # s1 = Tree("→", None)
-    # s2 = Tree("→", s1)
-    # s3 = Tree("→", s1)
-    # s1.children.append(s2)
-    # s1.children.append(s3)
-    # s2.children.append(Tree("a", s2))
-    # s4 = Tree("+", s2)
-    # s2.children.append(s4)
-    # s4.children.append(Tree("b", s4))
-    # s5 = Tree("+", s4)
-    # s4.children.append(s5)
-    # s5.children.append(Tree("c", s5))
-    # s5.children.append(Tree("d", s5))
-    # s6 = Tree("X", s3)
-    # s3.children.append(s6)
-    # s3.children.append(Tree("g", s3))
-    # s6.children.append(Tree("e", s6))
-    # s6.children.append(Tree("f", s6))
-
-    # Fig 7
-    # s1 = Tree("→", None)
-    # s2 = Tree("a", s1)
-    # s3 = Tree("+", s1)
-    # s1.children.append(s2)
-    # s1.children.append(s3)
-    # s3.children.append(Tree("d", s3))
-    # s4 = Tree("→", s3)
-    # s3.children.append(s4)
-    # # s4.children.append(Tree("b", s4))
-    # s5 = Tree("+", s4)
-    # s5.children.append(Tree("b", s5))
-    # s5.children.append(Tree("c", s5))
-    # s4.children.append(s5)
-    # s6 = Tree("→", s4)
-    # s4.children.append(s6)
-    # s7 = Tree("X", s6)
-    # s7.children.append(Tree("e", s7))
-    # s7.children.append(Tree("f", s7))
-    # s6.children.append(s7)
-    # s6.children.append(Tree("g", s6))
-
-    # Fig 6
-    # s1 = Tree("→", None)
-    # s2 = Tree("→", s1)
-    # s3 = Tree("→", s1)
-    # s1.children.append(s2)
-    # s1.children.append(s3)
-    # s2.children.append(Tree("a", s2))
-    # s4 = Tree("O", s2)
-    # s2.children.append(s4)
-    # s4.children.append(Tree("b", s4))
-    # s5 = Tree("O", s4)
-    # s4.children.append(s5)
-    # s5.children.append(Tree("c", s5))
-    # s7 = Tree("*", s5)
-    # s5.children.append(s7)
-    # s7.children.append(Tree("d", s7))
-    # s7.children.append(Tree("d", s7))
-    # s7.children.append(Tree("z", s7))
-    # s6 = Tree("X", s3)
-    # s3.children.append(s6)
-    # s3.children.append(Tree("g", s3))
-    # s6.children.append(Tree("e", s6))
-    # s6.children.append(Tree("f", s6))
-
-    # Fig 8
-    # s1 = Tree("→", None)
-    # s2 = Tree("→", s1)
-    # s3 = Tree("→", s1)
-    # s1.children.append(s2)
-    # s1.children.append(s3)
-    # s2.children.append(Tree("a", s2))
-    # s4 = Tree("X", s2)
-    # s2.children.append(s4)
-    # s7 = Tree("+", s4)
-    # # s4.children.append(s7)
-    # s7.children.append(Tree("b", s7))
-    # s7.children.append(Tree("c", s7))
-    #
-    # s8 = Tree("+", s4)
-    # s4.children.append(s7)
-    # s4.children.append(s8)
-    # s9 = Tree("+", s8)
-    # s8.children.append(s9)
-    # s9.children.append(Tree("b", s9))
-    # s9.children.append(Tree("c", s9))
-    # s8.children.append(Tree("d", s8))
-    # s9 = Tree("X", s3)
-    # s3.children.append(s9)
-    # s9.children.append(Tree("e", s9))
-    # s9.children.append(Tree("f", s9))
-    # s3.children.append(Tree("g", s3))
-
-    # Loop test
-    # s1 = Tree("*", None)
-    # s1.children.append(Tree("A", s1))
-    # s1.children.append(Tree("B", s1))
-    # s1.children.append(Tree("C", s1))
-    # trees.append([s1, 3])
-    #
-    # s1 = Tree("*", None)
-    # s2 = Tree("O", s1)
-    # s2.children.append(Tree("A", s2))
-    # s2.children.append(Tree("D", s2))
-    # s1.children.append(s2)
-    # s1.children.append(Tree("B", s1))
-    # s1.children.append(Tree("C", s1))
-    # trees.append([s1, 4])
-    #
-    # s1 = Tree("*", None)
-    # s2 = Tree("O", s1)
-    # s2.children.append(Tree("B", s2))
-    # s2.children.append(Tree("D", s2))
-    # s1.children.append(Tree("A", s1))
-    # s1.children.append(s2)
-    # s1.children.append(Tree("C", s1))
-    # trees.append([s1, 4])
-    #
-    # s1 = Tree("*", None)
-    # s2 = Tree("O", s1)
-    # s2.children.append(Tree("C", s2))
-    # s2.children.append(Tree("D", s2))
-    # s1.children.append(Tree("A", s1))
-    # s1.children.append(Tree("B", s1))
-    # s1.children.append(s2)
-    #
-    # trees.append([s1, 4])
-    #
-    # s1 = Tree("*", None)
-    # s1.children.append(Tree("A", s1))
-    # s1.children.append(Tree("τ", s1))
-    # s1.children.append(Tree("C", s1))
-    #
-    #
-    # trees.append([s1, 2])
-    #
-    # s1 = Tree("*", None)
-    # s2 = Tree("O", s1)
-    # s2.children.append(Tree("B", s2))
-    # s2.children.append(Tree("τ", s2))
-    # s1.children.append(Tree("A", s1))
-    # s1.children.append(s2)
-    # s1.children.append(Tree("C", s1))
-    #
-    #
-    # trees.append([s1, 4])
-    #
-    # s1 = Tree("*", None)
-    # s1.children.append(Tree("A", s1))
-    # s1.children.append(Tree("B", s1))
-    # s1.children.append(Tree("τ", s1))
-    #
-    #
-    # trees.append([s1, 0])
-    #
-    # s1 = Tree("*", None)
-    # s1.children.append(Tree("τ", s1))
-    # s1.children.append(Tree("B", s1))
-    # s1.children.append(Tree("C", s1))
-    #
-    #
-    # trees.append([s1, 0])
-
-    return trees
+def create_plot():
+    df = pandas.read_csv(os.path.join("csv_data", f"{FILE_NAME}.csv"))
+    df = df.groupby(by="Gen_number").mean()
+    plt.figure()
+    fig = df.plot()
+    fig.set_ylabel("Metric Value")
+    fig.set_xlabel("Generation")
+    fig = fig.get_figure()
+    plt.show()
+    fig.savefig(os.path.join("plots", f"{FILE_NAME}.png"))
 
 
-# TODO dodac liczenie metryk po kazdej mutacji lub gdy drzewo wzielo udzial w mutacji to zeby nie bralo kolejny raz w danej generacji !!
 def run(tree_list, unique_events, trace_list, config_params: Config):
     logging.info(tree_list)
     trace_frequency = {
@@ -453,21 +266,23 @@ def run(tree_list, unique_events, trace_list, config_params: Config):
     for trace in trace_frequency.keys():
         for i in range(len(trace)):
             traces_options.setdefault(trace[:i], set()).add(trace[i])
-    # logging.info(trace_frequency.keys())
-    # logging.info(traces_options.keys())
-    # tree_list[0].count_fitness(unique_events, trace_frequency, config_params, traces_options)
-    # char_frequency = {char: 0 for char in list(unique_events)}
-    # for trace, value in trace_frequency.items():
-    #     for item, count in collections.Counter(trace).items():
-    #         char_frequency[item] += count * value
-    # print(f"Char frequency: {char_frequency}")
-    # denominator_generalization = sum([ math.pow(math.sqrt(val), -1) for val in char_frequency.values()])
     for tree in tree_list:
+        flattening_tree(tree)
         tree.count_fitness(
             unique_events, trace_frequency, config_params, traces_options
         )
+    try:
+        df = pandas.read_csv(os.path.join("csv_data", FILE_NAME + ".csv"))
+    except FileNotFoundError:
+        d = {"Gen_number": [], "Fitness": [], "Replay_fitness": [], "Precision": [], "Simplicity": [], "Generalization": [], "Tree": []}
+        df = pandas.DataFrame(data=d)
+    best_tree = sorted(tree_list)[-1]
     for _ in range(config_params.number_of_generations):
-
+        if best_tree.fitness > config_params.stop_condition_replay_fitness:
+            logging.info(
+                f"Found tree with satisfying replay fitness!: {max(tree_list).fitness}"
+            )
+            break
         elite_list, worst_list = get_elite(tree_list, config_params.elite_size)
         worst_list_after_change = random_creation(
             worst_list, config_params.trees_to_replace_size, unique_events
@@ -481,15 +296,15 @@ def run(tree_list, unique_events, trace_list, config_params: Config):
             t.count_fitness(
                 unique_events, trace_frequency, config_params, traces_options
             )
-        # logging.info(
-        #     f"Stop condition {config_params.stop_condition_replay_fitness}  {_}"
-        # )
-        if max(tree_list).fitness > config_params.stop_condition_replay_fitness:
-            logging.info(
-                f"Found tree with satisfying replay fitness!: {max(tree_list).fitness}"
-            )
-            break
         tree_list = elite_list + worst_list_after_change
+        best_tree = sorted(tree_list)[-1]
+        logging.info(
+            f"Tree: {best_tree} Replay fitness: {best_tree.replay_fitness} Precision: {best_tree.precision} Simplicity: {best_tree.simplicity} Generalization: {best_tree.generalization} Fitness: {best_tree.fitness} Iteration: {_}"
+        )
+        df = df.append({"Gen_number": _+1, "Fitness": best_tree.fitness, "Replay_fitness": best_tree.replay_fitness, "Precision": best_tree.precision, "Simplicity": best_tree.simplicity, "Generalization": best_tree.generalization, "Tree": str(best_tree)}, ignore_index=True)
+
+    df.to_csv(os.path.join("csv_data", FILE_NAME + ".csv"), index=False)
     logging.info(f"Number of iterations: {_}")
-    # TODO zmienic zeby zwracalo tlyko elite
-    return sorted(tree_list)[-15:]
+    create_bpmn_model(best_tree)
+    create_plot()
+    return best_tree
