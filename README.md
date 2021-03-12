@@ -1,11 +1,19 @@
 # Evolutionary Tree Miner
 Algorytm zaimplementowany w ramach pracy inżynierskiej.
 
-### Uruchomienie programu:
+### Wymagania:
 
 - Python 3.8
-- pip install -r requirements.txt
-- zastąpienie pliku `\pm4py\simulation\tree_generator\variants\ptandloggenerator.py` z biblioteki pm4py przez plik `\setup\ptandloggenerator.py`
+- pip
+
+### Uruchomienie programu:
+
+- git clone <link>
+- cd Evolutionary-Tree-Miner
+- pip3 install virtualenv && virtualenv etm && source etm/bin/activate (opcjonalne - linux/mac)
+- pip3 install -r requirements.txt
+- cp setup/ptandloggenerator.py etm/lib/python3.8/site-packages/pm4py/simulation/tree_generator/variants/ptandloggenerator.py
+- Przykładowe uruchomienie programu: `python3 Main.py -f "event_logs\Artificial - Loan Process.xes" -rw 10 -pw 8 -sw 3 -gw 1 -s 0.85 -r 0.2 -m 0.3 -c 0.3 -e 0.1 -pop 200 -gen 500`
 - pomoc: `python Main.py --help`
 ```bash
 usage: Main.py [-h] -f EVENT_LOG_FILE -rw REPLAY_FITNESS_WEIGHT -pw PRECISION_WEIGHT -sw SIMPLICITY_WEIGHT -gw GENERALIZATION_WEIGHT -s STOP_CONDITION_REPLAY_FITNESS -r TREES_TO_REPLACE_SIZE -m TREES_TO_MUTATE_SIZE -c TREES_TO_CROSS_SIZE [-e ELITE_SIZE] [-pop INITIAL_POPULATION_SIZE]
