@@ -8,10 +8,12 @@ Algorytm zaimplementowany w ramach pracy inżynierskiej.
 
 ### Uruchomienie programu:
 
-- git clone <link>
+- git clone link_do_tego_repo
 - cd Evolutionary-Tree-Miner
 - pip3 install virtualenv && virtualenv etm && source etm/bin/activate (opcjonalne - linux/mac)
 - pip3 install -r requirements.txt
+- git clone https://github.com/soniaradon/bpmn-python.git
+- pipenv install --dev -e bpmn-python
 - cp setup/ptandloggenerator.py etm/lib/python3.8/site-packages/pm4py/simulation/tree_generator/variants/ptandloggenerator.py
 - Przykładowe uruchomienie programu: `python3 Main.py -f "event_logs/Artificial - Loan Process.xes" -rw 10 -pw 8 -sw 3 -gw 1 -s 0.85 -r 0.2 -m 0.3 -c 0.3 -e 0.1 -pop 200 -gen 500`
 - pomoc: `python Main.py --help`
