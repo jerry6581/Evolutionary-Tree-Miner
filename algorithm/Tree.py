@@ -250,7 +250,8 @@ def check_next_node(start_tree, i, trace, match_mask):
     elif start_tree.label == "*":
         do = start_tree.children[0]
         redo = start_tree.children[1]
-        exit_loop = start_tree.children[2]
+        if len(start_tree.children) > 2:
+            exit_loop = start_tree.children[2]
         if len(trace) > i and do.label == trace[i]:
             i += 1
             update_mask(i, match_mask)
