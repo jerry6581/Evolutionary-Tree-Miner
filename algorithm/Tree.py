@@ -85,6 +85,8 @@ class Tree:
                 for item, count in collections.Counter(
                     [str(t) for t in executions_list]
                 ).items():
+                    if item not in executions.keys():
+                        continue
                     executions[item] += count * val
 
         self.replay_fitness = matches / denominator
